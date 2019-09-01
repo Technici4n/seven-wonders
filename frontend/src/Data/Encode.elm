@@ -1,19 +1,13 @@
-module Messages.Outbound exposing (..)
+module Data.Encode exposing (encodeFromPlayer)
 
-import Json.Encode exposing (..)
+import C_Data exposing (ConnectInfo, FromPlayer(..))
+import Json.Encode exposing (encode, int, list, object, string, Value)
 
--- MESSAGES
-
-type FromPlayer
-  = CreateGame String Int
-  | Connect ConnectInfo
-
-type alias ConnectInfo =
-  { gameName : String
-  , playerName : String
-  }
-
--- ENCODERS
+encodeFromPlayer : FromPlayer -> String
+encodeFromPlayer fp =
+  fp
+  |> fromPlayer
+  |> encode 0
 
 fromPlayer : FromPlayer -> Value
 fromPlayer fp =
