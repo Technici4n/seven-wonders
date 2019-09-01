@@ -4,7 +4,7 @@ import Html.Attributes exposing (type_, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode exposing (decodeString)
 import Json.Encode exposing (encode)
-import Messages.Inbound exposing (GameInfo, toPlayer, ToPlayer(..))
+import Messages.Inbound exposing (GameInfo, toPlayer, ToPlayer(..), Game)
 import Messages.Outbound exposing (fromPlayer, FromPlayer(..), ConnectInfo)
 import Websocket exposing (listen, send)
 
@@ -35,6 +35,7 @@ type alias GameModel =
   , playerName : String
   , playerCount : Int
   , connectedPlayers : List String
+  , game : Maybe Game
   }
 
 -- Data for the "new game" form
@@ -115,7 +116,7 @@ update msg model =
         
 
     updateActiveGame playerInfo activeGameInfo =
-      ( InGame (GameModel activeGameInfo.name playerInfo.playerName activeGameInfo.playerCount activeGameInfo.connectedPlayers ), Cmd.none )
+      ( InGame (GameModel activeGameInfo.name playerInfo.playerName activeGameInfo.playerCount activeGameInfo.connectedPlayers activeGameInfo.game), Cmd.none )
   in
     case model of
       InLobby lobbyModel ->
@@ -178,11 +179,16 @@ viewLobby lobbyModel =
 
 viewGame : GameModel -> Html Msg
 viewGame gameModel =
-  div []
-    [ h2 [] [ text ("Welcome to game " ++ gameModel.gameName) ]
-    , p [] [ text ("Waiting for more players (" ++ (String.fromInt <| List.length <| gameModel.connectedPlayers) ++ "/" ++ (String.fromInt gameModel.playerCount) ++ ")" ) ]
-    , viewConnectedPlayers gameModel.connectedPlayers
-    ]
+  let
+    welcomeText = case gameModel.game of
+      Just _ -> "Game started ("
+      Nothing -> "Waiting for more players ("
+  in
+    div []
+      [ h2 [] [ text ("Welcome to game " ++ gameModel.gameName) ]
+      , p [] [ text (welcomeText ++ (String.fromInt <| List.length <| gameModel.connectedPlayers) ++ "/" ++ (String.fromInt gameModel.playerCount) ++ ")" ) ]
+      , viewConnectedPlayers gameModel.connectedPlayers
+      ]
 
 viewGameInfos : List GameInfo -> Html Msg
 viewGameInfos g =

@@ -1,6 +1,7 @@
 use actix::prelude::*;
 use std::collections::HashMap;
 use crate::connection::PlayerConnection;
+use crate::game::Game as GameState;
 use crate::messages::{ActiveGameInfo, ConnectInfo, PlayerInfo, FromPlayer, GameInfo, ToPlayer, ToServer};
 
 #[derive(Debug)]
@@ -46,7 +47,16 @@ impl Handler<ToServer> for Lobby {
                 self.broadcast_games();
             },
             ToServer::StopSpectating(addr) => {
-                self.players.remove(&addr);
+                if let Some(player_state) = self.players.remove(&addr) {
+                    if let PlayerState::InGame(game_name) = player_state {
+                        self.games.get_mut(&game_name).map(move |game| {
+                            game.remove_player(addr);
+                        });
+                    }
+                } else {
+                    println!("Couldn't remove a player that should have been connected!");
+                }
+                self.broadcast_games();
             },
             ToServer::PlayerMessage(addr, msg) => match msg {
                 FromPlayer::CreateGame(name, player_count) => {
@@ -83,7 +93,7 @@ impl Handler<ToServer> for Lobby {
 #[derive(Debug)]
 struct Game {
     pub name: String,
-    pub player_count: u32,
+    pub player_count: usize,
     pub players: HashMap<String, ConnectedPlayer>,
     pub state: Option<GameState>,
 }
@@ -99,7 +109,7 @@ impl Game {
                 accepted = true;
                 addr.clone()
             });
-        } else if self.state.is_none() && self.player_count > self.players.len() as u32 {
+        } else if self.state.is_none() && self.player_count > self.players.len() {
             self.players.insert(player_name.clone(), Some(addr.clone()));
             accepted = true;
         }
@@ -110,15 +120,40 @@ impl Game {
         accepted
     }
 
+    pub fn remove_player(&mut self, addr: Addr<PlayerConnection>) {
+        match &self.state {
+            Some(_) => {
+                // Remove player connections matching this address
+                self.players.iter_mut().for_each(|(_, connected_player)| {
+                    if let Some(a) = connected_player {
+                        if *a == addr {
+                            *connected_player = None;
+                        }
+                    }
+                });
+            },
+            None => {
+                // Remove players matching this address
+                self.players.retain(|_, connected_player| {
+                    match connected_player {
+                        Some(a) => *a != addr,
+                        None => false,
+                    }
+                });
+            },
+        }
+    }
+
     pub fn mabye_start_game(&mut self) {
-        if self.state.is_none() && self.players.len() as u32 == self.player_count {
+        if self.state.is_none() && self.players.len() == self.player_count {
             self.start_game();
         }
     }
 
     fn start_game(&mut self) {
         println!("Game started!");
-        // TODO: implement this
+        self.state = Some(GameState::new(self.player_count));
+        self.broadcast_game_info();
     }
 
     fn broadcast_game_info(&mut self) {
@@ -126,12 +161,13 @@ impl Game {
         let connected_players: Vec<_> = self.players.iter().filter_map(
             |(name, cp)| cp.as_ref().map(|_| name).cloned()
         ).collect();
-        let agi = ActiveGameInfo { name: self.name.clone(), player_count: self.player_count, connected_players };
-        for (player_name, cp) in self.players.iter() {
+        let agi = ActiveGameInfo { name: self.name.clone(), player_count: self.player_count, connected_players, game: self.state.clone(), };
+        for (i, (player_name, cp)) in self.players.iter().enumerate() {
             if let Some(addr) = cp {
                 addr.do_send(ToPlayer::ActiveGame(
                     PlayerInfo {
                         player_name: player_name.clone(),
+                        cards: self.state.as_ref().map(|game| game.players[i].hand_cards.clone()),
                     },
                     agi.clone()
                 ));
@@ -139,9 +175,6 @@ impl Game {
         }
     }
 }
-
-#[derive(Debug)]
-struct GameState {}
 
 #[derive(Debug)]
 enum PlayerState {

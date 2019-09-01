@@ -4808,9 +4808,9 @@ var author$project$Websocket$listen = _Platform_incomingPort('listen', elm$json$
 var author$project$Main$subscriptions = function (model) {
 	return author$project$Websocket$listen(author$project$Main$WsMessage);
 };
-var author$project$Main$GameModel = F4(
-	function (gameName, playerName, playerCount, connectedPlayers) {
-		return {connectedPlayers: connectedPlayers, gameName: gameName, playerCount: playerCount, playerName: playerName};
+var author$project$Main$GameModel = F5(
+	function (gameName, playerName, playerCount, connectedPlayers, game) {
+		return {connectedPlayers: connectedPlayers, game: game, gameName: gameName, playerCount: playerCount, playerName: playerName};
 	});
 var author$project$Main$InGame = function (a) {
 	return {$: 'InGame', a: a};
@@ -4934,10 +4934,41 @@ var author$project$Messages$Inbound$ActiveGame = F2(
 var author$project$Messages$Inbound$GameList = function (a) {
 	return {$: 'GameList', a: a};
 };
-var author$project$Messages$Inbound$ActiveGameInfo = F3(
-	function (name, playerCount, connectedPlayers) {
-		return {connectedPlayers: connectedPlayers, name: name, playerCount: playerCount};
+var author$project$Messages$Inbound$ActiveGameInfo = F4(
+	function (name, playerCount, connectedPlayers, game) {
+		return {connectedPlayers: connectedPlayers, game: game, name: name, playerCount: playerCount};
 	});
+var author$project$Messages$Inbound$Game = F2(
+	function (players, age) {
+		return {age: age, players: players};
+	});
+var author$project$Messages$Inbound$PlayerData = F4(
+	function (boardCards, resourceProductions, adjacentResourceCosts, gold) {
+		return {adjacentResourceCosts: adjacentResourceCosts, boardCards: boardCards, gold: gold, resourceProductions: resourceProductions};
+	});
+var author$project$Messages$Inbound$Card = F6(
+	function (name, goldCost, resourceCost, effect, chainingTargets, chainingSources) {
+		return {chainingSources: chainingSources, chainingTargets: chainingTargets, effect: effect, goldCost: goldCost, name: name, resourceCost: resourceCost};
+	});
+var author$project$Messages$Inbound$ManufacturedProductsCost = {$: 'ManufacturedProductsCost'};
+var author$project$Messages$Inbound$Points = function (a) {
+	return {$: 'Points', a: a};
+};
+var author$project$Messages$Inbound$RawMaterialsCost = function (a) {
+	return {$: 'RawMaterialsCost', a: a};
+};
+var author$project$Messages$Inbound$Resources = function (a) {
+	return {$: 'Resources', a: a};
+};
+var author$project$Messages$Inbound$Science = function (a) {
+	return {$: 'Science', a: a};
+};
+var author$project$Messages$Inbound$Shields = function (a) {
+	return {$: 'Shields', a: a};
+};
+var elm$json$Json$Decode$int = _Json_decodeInt;
+var elm$json$Json$Decode$list = _Json_decodeList;
+var author$project$Messages$Inbound$resourceArray = elm$json$Json$Decode$list(elm$json$Json$Decode$int);
 var elm$core$List$foldrHelper = F4(
 	function (fn, acc, ctr, ls) {
 		if (!ls.b) {
@@ -4998,11 +5029,126 @@ var elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3(elm$core$List$foldr, elm$json$Json$Decode$field, decoder, fields);
 	});
-var elm$json$Json$Decode$int = _Json_decodeInt;
-var elm$json$Json$Decode$list = _Json_decodeList;
-var elm$json$Json$Decode$map3 = _Json_map3;
-var author$project$Messages$Inbound$activeGameInfo = A4(
-	elm$json$Json$Decode$map3,
+var elm$json$Json$Decode$map = _Json_map1;
+var elm$json$Json$Decode$oneOf = _Json_oneOf;
+var elm$json$Json$Decode$succeed = _Json_succeed;
+var author$project$Messages$Inbound$cardEffect = elm$json$Json$Decode$oneOf(
+	_List_fromArray(
+		[
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['Resources']),
+			A2(elm$json$Json$Decode$map, author$project$Messages$Inbound$Resources, author$project$Messages$Inbound$resourceArray)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['Points']),
+			A2(elm$json$Json$Decode$map, author$project$Messages$Inbound$Points, elm$json$Json$Decode$int)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['RawMaterialsCost']),
+			A2(elm$json$Json$Decode$map, author$project$Messages$Inbound$RawMaterialsCost, elm$json$Json$Decode$int)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['ManufacturedProductsCost']),
+			elm$json$Json$Decode$succeed(author$project$Messages$Inbound$ManufacturedProductsCost)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['Shields']),
+			A2(elm$json$Json$Decode$map, author$project$Messages$Inbound$Shields, elm$json$Json$Decode$int)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['Science']),
+			A2(elm$json$Json$Decode$map, author$project$Messages$Inbound$Science, elm$json$Json$Decode$int))
+		]));
+var elm$json$Json$Decode$map6 = _Json_map6;
+var author$project$Messages$Inbound$card = A7(
+	elm$json$Json$Decode$map6,
+	author$project$Messages$Inbound$Card,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['name']),
+		elm$json$Json$Decode$string),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['gold_cost']),
+		elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['resource_cost']),
+		author$project$Messages$Inbound$resourceArray),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['effect']),
+		author$project$Messages$Inbound$cardEffect),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['chaining_targets']),
+		elm$json$Json$Decode$list(elm$json$Json$Decode$string)),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['chaining_sources']),
+		elm$json$Json$Decode$list(elm$json$Json$Decode$string)));
+var elm$json$Json$Decode$map4 = _Json_map4;
+var author$project$Messages$Inbound$playerData = A5(
+	elm$json$Json$Decode$map4,
+	author$project$Messages$Inbound$PlayerData,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['board_cards']),
+		elm$json$Json$Decode$list(author$project$Messages$Inbound$card)),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['resource_productions']),
+		elm$json$Json$Decode$list(
+			elm$json$Json$Decode$list(author$project$Messages$Inbound$resourceArray))),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['adjacent_resource_costs']),
+		elm$json$Json$Decode$list(author$project$Messages$Inbound$resourceArray)),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['gold']),
+		elm$json$Json$Decode$int));
+var elm$json$Json$Decode$map2 = _Json_map2;
+var author$project$Messages$Inbound$game = A3(
+	elm$json$Json$Decode$map2,
+	author$project$Messages$Inbound$Game,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['players']),
+		elm$json$Json$Decode$list(author$project$Messages$Inbound$playerData)),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['age']),
+		elm$json$Json$Decode$int));
+var elm$json$Json$Decode$maybe = function (decoder) {
+	return elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2(elm$json$Json$Decode$map, elm$core$Maybe$Just, decoder),
+				elm$json$Json$Decode$succeed(elm$core$Maybe$Nothing)
+			]));
+};
+var author$project$Messages$Inbound$activeGameInfo = A5(
+	elm$json$Json$Decode$map4,
 	author$project$Messages$Inbound$ActiveGameInfo,
 	A2(
 		elm$json$Json$Decode$at,
@@ -5018,11 +5164,17 @@ var author$project$Messages$Inbound$activeGameInfo = A4(
 		elm$json$Json$Decode$at,
 		_List_fromArray(
 			['connected_players']),
-		elm$json$Json$Decode$list(elm$json$Json$Decode$string)));
+		elm$json$Json$Decode$list(elm$json$Json$Decode$string)),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['game']),
+		elm$json$Json$Decode$maybe(author$project$Messages$Inbound$game)));
 var author$project$Messages$Inbound$GameInfo = F3(
 	function (name, playerCount, connectedPlayers) {
 		return {connectedPlayers: connectedPlayers, name: name, playerCount: playerCount};
 	});
+var elm$json$Json$Decode$map3 = _Json_map3;
 var author$project$Messages$Inbound$gameInfo = A4(
 	elm$json$Json$Decode$map3,
 	author$project$Messages$Inbound$GameInfo,
@@ -5044,7 +5196,6 @@ var author$project$Messages$Inbound$gameInfo = A4(
 var author$project$Messages$Inbound$PlayerInfo = function (playerName) {
 	return {playerName: playerName};
 };
-var elm$json$Json$Decode$map = _Json_map1;
 var author$project$Messages$Inbound$playerInfo = A2(
 	elm$json$Json$Decode$map,
 	author$project$Messages$Inbound$PlayerInfo,
@@ -5054,8 +5205,6 @@ var author$project$Messages$Inbound$playerInfo = A2(
 			['player_name']),
 		elm$json$Json$Decode$string));
 var elm$json$Json$Decode$index = _Json_decodeIndex;
-var elm$json$Json$Decode$map2 = _Json_map2;
-var elm$json$Json$Decode$oneOf = _Json_oneOf;
 var author$project$Messages$Inbound$toPlayer = elm$json$Json$Decode$oneOf(
 	_List_fromArray(
 		[
@@ -5092,7 +5241,7 @@ var author$project$Main$update = F2(
 			function (playerInfo, activeGameInfo) {
 				return _Utils_Tuple2(
 					author$project$Main$InGame(
-						A4(author$project$Main$GameModel, activeGameInfo.name, playerInfo.playerName, activeGameInfo.playerCount, activeGameInfo.connectedPlayers)),
+						A5(author$project$Main$GameModel, activeGameInfo.name, playerInfo.playerName, activeGameInfo.playerCount, activeGameInfo.connectedPlayers, activeGameInfo.game)),
 					elm$core$Platform$Cmd$none);
 			});
 		var noUpdate = _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
@@ -5201,7 +5350,6 @@ var elm$core$List$map = F2(
 			_List_Nil,
 			xs);
 	});
-var elm$json$Json$Decode$succeed = _Json_succeed;
 var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 	switch (handler.$) {
 		case 'Normal':
@@ -5253,6 +5401,14 @@ var author$project$Main$viewConnectedPlayers = function (connectedPlayers) {
 var elm$html$Html$h2 = _VirtualDom_node('h2');
 var elm$html$Html$p = _VirtualDom_node('p');
 var author$project$Main$viewGame = function (gameModel) {
+	var welcomeText = function () {
+		var _n0 = gameModel.game;
+		if (_n0.$ === 'Just') {
+			return 'Game started (';
+		} else {
+			return 'Waiting for more players (';
+		}
+	}();
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
@@ -5271,7 +5427,7 @@ var author$project$Main$viewGame = function (gameModel) {
 				_List_fromArray(
 					[
 						elm$html$Html$text(
-						'Waiting for more players (' + (elm$core$String$fromInt(
+						welcomeText + (elm$core$String$fromInt(
 							elm$core$List$length(gameModel.connectedPlayers)) + ('/' + (elm$core$String$fromInt(gameModel.playerCount) + ')'))))
 					])),
 				author$project$Main$viewConnectedPlayers(gameModel.connectedPlayers)

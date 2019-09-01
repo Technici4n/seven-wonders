@@ -5,6 +5,7 @@ use actix_web_actors::ws;
 use std::io;
 use crate::lobby::Lobby;
 
+mod cards;
 mod connection;
 mod game;
 mod lobby;
