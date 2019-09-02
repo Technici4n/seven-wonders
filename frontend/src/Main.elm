@@ -9,7 +9,7 @@ import H_Subscriptions exposing (subscriptions)
 main =
   Browser.element
     { init = init
-    , update = update
+    , update = \ a b -> update a b |> Debug.log "model"
     , subscriptions = subscriptions
     , view = view
     }

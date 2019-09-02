@@ -1,6 +1,18 @@
 module Data.Decode exposing (decodeToPlayer)
 
-import A_Model exposing (Card, CardEffect(..), Game, GameInfo, PlayerData, ResourceArray)
+import A_Model exposing
+  ( Card
+  , CardEffect(..)
+  , ChoseResourcesData
+  , ChoosingResourcesData
+  , Game
+  , GameInfo
+  , Play(..)
+  , PlayerData
+  , ResourceAllocation
+  , ResourceAllocationVerdict
+  , ResourceArray
+  )
 import C_Data exposing (ActiveGameInfo, PlayerInfo, ToPlayer(..))
 import Json.Decode as Decode
 import Json.Decode exposing (at, index, int, list, maybe, string, Decoder)
@@ -10,6 +22,11 @@ decodeToPlayer src =
   src
     |> Decode.decodeString toPlayer
     |> Result.mapError Decode.errorToString
+
+exact : a -> Decoder a -> Decoder a
+exact value src =
+  src
+  |> Decode.andThen (\x -> if x == value then Decode.succeed x else Decode.fail "Wrong value")
 
 toPlayer : Decoder ToPlayer
 toPlayer =
@@ -31,9 +48,10 @@ gameInfo =
   
 playerInfo : Decoder PlayerInfo
 playerInfo =
-  Decode.map2 PlayerInfo
+  Decode.map3 PlayerInfo
     (at ["player_name"] string)
     (at ["cards"] (maybe (list card)))
+    (at ["play"] (maybe play))
 
 card : Decoder Card
 card =
@@ -54,7 +72,7 @@ cardEffect =
     [ at ["Resources"] (Decode.map Resources resourceArray)
     , at ["Points"] (Decode.map Points int)
     , at ["RawMaterialsCost"] (Decode.map RawMaterialsCost int)
-    , at ["ManufacturedProductsCost"] (Decode.succeed ManufacturedProductsCost)
+    , exact "ManufacturedProductsCost" string |> Decode.map (always ManufacturedProductsCost)
     , at ["Shields"] (Decode.map Shields int)
     , at ["Science"] (Decode.map Science int)
     ]
@@ -78,6 +96,37 @@ playerData =
   Decode.map4 PlayerData
     (at ["board_cards"] (list card))
     (at ["resource_productions"] (list (list resourceArray)))
-    (at ["adjacent_resource_costs"] (list resourceArray))
+    (at ["resource_costs"] (list resourceArray))
     (at ["gold"] int)
   
+play : Decoder Play
+play =
+  Decode.oneOf
+  [ at ["NoAction"] (Decode.succeed NoAction)
+  , at ["ChoosingResources"] (Decode.map ChoosingResources choosingResourcesData)
+  , at ["ChoseResources"] (Decode.map ChoseResources choseResourcesData)
+  ]
+
+choosingResourcesData : Decoder ChoosingResourcesData
+choosingResourcesData =
+  Decode.map3 ChoosingResourcesData
+    (at ["card_index"] int)
+    (at ["resource_allocation"] resourceAllocation)
+    (at ["verdict"] resourceAllocationVerdict)
+
+choseResourcesData : Decoder ChoseResourcesData
+choseResourcesData =
+  Decode.map2 ChoseResourcesData
+    (at ["card_index"] int)
+    (at ["resource_allocation"] resourceAllocation)
+
+resourceAllocation : Decoder ResourceAllocation
+resourceAllocation =
+  list (list int)
+
+resourceAllocationVerdict : Decoder ResourceAllocationVerdict
+resourceAllocationVerdict =
+  Decode.map3 ResourceAllocationVerdict
+    (at ["extra_resources"] resourceArray)
+    (at ["missing_resources"] resourceArray)
+    (at ["missing_gold"] int)

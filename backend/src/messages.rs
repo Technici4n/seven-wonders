@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::connection::PlayerConnection;
-use crate::game::{Card, Game};
+use crate::game::{Card, Game, Play, PlayerAction};
 
 #[derive(Message, Debug, Clone, Serialize)]
 pub enum ToPlayer {
@@ -24,6 +24,8 @@ pub enum FromPlayer {
     CreateGame(String, usize),
     /// Connect to some game
     Connect(ConnectInfo),
+    /// Perform some action in the game
+    Action(PlayerAction),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -43,6 +45,7 @@ pub struct ConnectInfo {
 pub struct PlayerInfo {
     pub player_name: String,
     pub cards: Option<Vec<Card>>,
+    pub play: Option<Play>,
 }
 
 #[derive(Debug, Clone, Serialize)]

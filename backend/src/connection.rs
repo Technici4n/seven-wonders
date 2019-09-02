@@ -47,7 +47,6 @@ impl Handler<ToPlayer> for PlayerConnection {
 
     fn handle(&mut self, msg: ToPlayer, ctx: &mut Self::Context) {
         let text = serde_json::to_string(&msg).unwrap();
-        println!("server sent text: {}", text);
         ctx.text(text);
     }
 }

@@ -1,6 +1,6 @@
 module C_Data exposing (..)
 
-import A_Model exposing (Card, Game, GameInfo)
+import A_Model exposing (Card, Game, GameInfo, Play, PlayerAction)
 
 {-
   From server to client
@@ -13,6 +13,7 @@ type ToPlayer
 type alias PlayerInfo =
   { playerName : String
   , cards : Maybe (List Card)
+  , play : Maybe Play
   }
 
 type alias ActiveGameInfo =
@@ -29,6 +30,7 @@ type alias ActiveGameInfo =
 type FromPlayer
   = CreateGame String Int
   | Connect ConnectInfo
+  | Action PlayerAction
 
 type alias ConnectInfo =
   { gameName : String

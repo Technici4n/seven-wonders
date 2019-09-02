@@ -1,11 +1,12 @@
 module F_Update exposing (update)
 
-import A_Model exposing (GameModel, LobbyModel, Model(..))
+import A_Model exposing (GameModel, LobbyModel, Model(..), Play(..))
 import B_Message exposing (Msg(..), NewGameMessage(..))
 import C_Data exposing (ConnectInfo, FromPlayer(..), ToPlayer(..))
 import Data.Decode exposing (decodeToPlayer)
 import Data.Encode exposing (encodeFromPlayer)
 import Json.Decode exposing (decodeString)
+import ListUtil as L
 import Websocket exposing (send)
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -18,8 +19,8 @@ update msg model =
       in
         case decodeToPlayer m of
           Ok decodedMsg ->
-            f decodedMsg
-          Err _ ->
+            f <| Debug.log "decoded message" decodedMsg
+          Err e ->
             noUpdate
 
     updateLobby lobbyMsg lobbyModel =
@@ -41,6 +42,8 @@ update msg model =
             |> encodeFromPlayer
             |> send
           )
+        PerformAction a ->
+          noUpdate
 
     updateGame gameMsg gameModel =
       case gameMsg of
@@ -57,10 +60,33 @@ update msg model =
           noUpdate
         JoinGame _ ->
           noUpdate
+        PerformAction action ->
+          ( model
+          , Action action
+            |> encodeFromPlayer
+            |> send
+          )
         
 
     updateActiveGame playerInfo activeGameInfo =
-      ( InGame (GameModel activeGameInfo.name playerInfo.playerName playerInfo.cards activeGameInfo.playerCount activeGameInfo.connectedPlayers activeGameInfo.game), Cmd.none )
+      let
+        playerId =
+          activeGameInfo.connectedPlayers
+          |> L.findIndex playerInfo.playerName
+          |> Maybe.withDefault -1
+      in
+        ( InGame
+          { gameName = activeGameInfo.name
+          , playerName = playerInfo.playerName
+          , playerId = playerId
+          , playerHand = playerInfo.cards
+          , play = Maybe.withDefault NoAction playerInfo.play
+          , playerCount = activeGameInfo.playerCount
+          , connectedPlayers = activeGameInfo.connectedPlayers
+          , game = activeGameInfo.game
+          }
+        , Cmd.none
+        )
   in
     case model of
       InLobby lobbyModel ->

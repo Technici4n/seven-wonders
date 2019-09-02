@@ -2314,6 +2314,43 @@ function _Platform_mergeExportsDebug(moduleName, obj, exports)
 
 
 
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+
+
+
 
 // HELPERS
 
@@ -4800,12 +4837,12 @@ var author$project$E_Init$init = function (_n0) {
 			}),
 		elm$core$Platform$Cmd$none);
 };
-var author$project$A_Model$GameModel = F6(
-	function (gameName, playerName, playerHand, playerCount, connectedPlayers, game) {
-		return {connectedPlayers: connectedPlayers, game: game, gameName: gameName, playerCount: playerCount, playerHand: playerHand, playerName: playerName};
-	});
 var author$project$A_Model$InGame = function (a) {
 	return {$: 'InGame', a: a};
+};
+var author$project$A_Model$NoAction = {$: 'NoAction'};
+var author$project$C_Data$Action = function (a) {
+	return {$: 'Action', a: a};
 };
 var author$project$C_Data$Connect = function (a) {
 	return {$: 'Connect', a: a};
@@ -4830,8 +4867,8 @@ var author$project$A_Model$Game = F2(
 		return {age: age, players: players};
 	});
 var author$project$A_Model$PlayerData = F4(
-	function (boardCards, resourceProductions, adjacentResourceCosts, gold) {
-		return {adjacentResourceCosts: adjacentResourceCosts, boardCards: boardCards, gold: gold, resourceProductions: resourceProductions};
+	function (boardCards, resourceProductions, resourceCosts, gold) {
+		return {boardCards: boardCards, gold: gold, resourceCosts: resourceCosts, resourceProductions: resourceProductions};
 	});
 var author$project$A_Model$Card = F6(
 	function (name, goldCost, resourceCost, effect, chainingTargets, chainingSources) {
@@ -4853,9 +4890,25 @@ var author$project$A_Model$Science = function (a) {
 var author$project$A_Model$Shields = function (a) {
 	return {$: 'Shields', a: a};
 };
+var elm$json$Json$Decode$andThen = _Json_andThen;
+var elm$json$Json$Decode$fail = _Json_fail;
+var elm$json$Json$Decode$succeed = _Json_succeed;
+var author$project$Data$Decode$exact = F2(
+	function (value, src) {
+		return A2(
+			elm$json$Json$Decode$andThen,
+			function (x) {
+				return _Utils_eq(x, value) ? elm$json$Json$Decode$succeed(x) : elm$json$Json$Decode$fail('Wrong value');
+			},
+			src);
+	});
 var elm$json$Json$Decode$int = _Json_decodeInt;
 var elm$json$Json$Decode$list = _Json_decodeList;
 var author$project$Data$Decode$resourceArray = elm$json$Json$Decode$list(elm$json$Json$Decode$int);
+var elm$core$Basics$always = F2(
+	function (a, _n0) {
+		return a;
+	});
 var elm$core$List$foldrHelper = F4(
 	function (fn, acc, ctr, ls) {
 		if (!ls.b) {
@@ -4918,7 +4971,7 @@ var elm$json$Json$Decode$at = F2(
 	});
 var elm$json$Json$Decode$map = _Json_map1;
 var elm$json$Json$Decode$oneOf = _Json_oneOf;
-var elm$json$Json$Decode$succeed = _Json_succeed;
+var elm$json$Json$Decode$string = _Json_decodeString;
 var author$project$Data$Decode$cardEffect = elm$json$Json$Decode$oneOf(
 	_List_fromArray(
 		[
@@ -4938,10 +4991,9 @@ var author$project$Data$Decode$cardEffect = elm$json$Json$Decode$oneOf(
 				['RawMaterialsCost']),
 			A2(elm$json$Json$Decode$map, author$project$A_Model$RawMaterialsCost, elm$json$Json$Decode$int)),
 			A2(
-			elm$json$Json$Decode$at,
-			_List_fromArray(
-				['ManufacturedProductsCost']),
-			elm$json$Json$Decode$succeed(author$project$A_Model$ManufacturedProductsCost)),
+			elm$json$Json$Decode$map,
+			elm$core$Basics$always(author$project$A_Model$ManufacturedProductsCost),
+			A2(author$project$Data$Decode$exact, 'ManufacturedProductsCost', elm$json$Json$Decode$string)),
 			A2(
 			elm$json$Json$Decode$at,
 			_List_fromArray(
@@ -4954,7 +5006,6 @@ var author$project$Data$Decode$cardEffect = elm$json$Json$Decode$oneOf(
 			A2(elm$json$Json$Decode$map, author$project$A_Model$Science, elm$json$Json$Decode$int))
 		]));
 var elm$json$Json$Decode$map6 = _Json_map6;
-var elm$json$Json$Decode$string = _Json_decodeString;
 var author$project$Data$Decode$card = A7(
 	elm$json$Json$Decode$map6,
 	author$project$A_Model$Card,
@@ -5006,7 +5057,7 @@ var author$project$Data$Decode$playerData = A5(
 	A2(
 		elm$json$Json$Decode$at,
 		_List_fromArray(
-			['adjacent_resource_costs']),
+			['resource_costs']),
 		elm$json$Json$Decode$list(author$project$Data$Decode$resourceArray)),
 	A2(
 		elm$json$Json$Decode$at,
@@ -5081,12 +5132,100 @@ var author$project$Data$Decode$gameInfo = A4(
 		_List_fromArray(
 			['connected_players']),
 		elm$json$Json$Decode$list(elm$json$Json$Decode$string)));
-var author$project$C_Data$PlayerInfo = F2(
-	function (playerName, cards) {
-		return {cards: cards, playerName: playerName};
+var author$project$C_Data$PlayerInfo = F3(
+	function (playerName, cards, play) {
+		return {cards: cards, play: play, playerName: playerName};
 	});
-var author$project$Data$Decode$playerInfo = A3(
+var author$project$A_Model$ChoosingResources = function (a) {
+	return {$: 'ChoosingResources', a: a};
+};
+var author$project$A_Model$ChoseResources = function (a) {
+	return {$: 'ChoseResources', a: a};
+};
+var author$project$A_Model$ChoosingResourcesData = F3(
+	function (cardIndex, resourceAllocation, verdict) {
+		return {cardIndex: cardIndex, resourceAllocation: resourceAllocation, verdict: verdict};
+	});
+var author$project$Data$Decode$resourceAllocation = elm$json$Json$Decode$list(
+	elm$json$Json$Decode$list(elm$json$Json$Decode$int));
+var author$project$A_Model$ResourceAllocationVerdict = F3(
+	function (extraResources, missingResources, missingGold) {
+		return {extraResources: extraResources, missingGold: missingGold, missingResources: missingResources};
+	});
+var author$project$Data$Decode$resourceAllocationVerdict = A4(
+	elm$json$Json$Decode$map3,
+	author$project$A_Model$ResourceAllocationVerdict,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['extra_resources']),
+		author$project$Data$Decode$resourceArray),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['missing_resources']),
+		author$project$Data$Decode$resourceArray),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['missing_gold']),
+		elm$json$Json$Decode$int));
+var author$project$Data$Decode$choosingResourcesData = A4(
+	elm$json$Json$Decode$map3,
+	author$project$A_Model$ChoosingResourcesData,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['card_index']),
+		elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['resource_allocation']),
+		author$project$Data$Decode$resourceAllocation),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['verdict']),
+		author$project$Data$Decode$resourceAllocationVerdict));
+var author$project$A_Model$ChoseResourcesData = F2(
+	function (cardIndex, resourceAllocation) {
+		return {cardIndex: cardIndex, resourceAllocation: resourceAllocation};
+	});
+var author$project$Data$Decode$choseResourcesData = A3(
 	elm$json$Json$Decode$map2,
+	author$project$A_Model$ChoseResourcesData,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['card_index']),
+		elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['resource_allocation']),
+		author$project$Data$Decode$resourceAllocation));
+var author$project$Data$Decode$play = elm$json$Json$Decode$oneOf(
+	_List_fromArray(
+		[
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['NoAction']),
+			elm$json$Json$Decode$succeed(author$project$A_Model$NoAction)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['ChoosingResources']),
+			A2(elm$json$Json$Decode$map, author$project$A_Model$ChoosingResources, author$project$Data$Decode$choosingResourcesData)),
+			A2(
+			elm$json$Json$Decode$at,
+			_List_fromArray(
+				['ChoseResources']),
+			A2(elm$json$Json$Decode$map, author$project$A_Model$ChoseResources, author$project$Data$Decode$choseResourcesData))
+		]));
+var author$project$Data$Decode$playerInfo = A4(
+	elm$json$Json$Decode$map3,
 	author$project$C_Data$PlayerInfo,
 	A2(
 		elm$json$Json$Decode$at,
@@ -5098,7 +5237,12 @@ var author$project$Data$Decode$playerInfo = A3(
 		_List_fromArray(
 			['cards']),
 		elm$json$Json$Decode$maybe(
-			elm$json$Json$Decode$list(author$project$Data$Decode$card))));
+			elm$json$Json$Decode$list(author$project$Data$Decode$card))),
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['play']),
+		elm$json$Json$Decode$maybe(author$project$Data$Decode$play)));
 var elm$json$Json$Decode$index = _Json_decodeIndex;
 var author$project$Data$Decode$toPlayer = elm$json$Json$Decode$oneOf(
 	_List_fromArray(
@@ -5152,6 +5296,53 @@ var elm$json$Json$Encode$object = function (pairs) {
 			_Json_emptyObject(_Utils_Tuple0),
 			pairs));
 };
+var author$project$Data$Encode$field = F2(
+	function (name, data) {
+		return elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(name, data)
+				]));
+	});
+var elm$json$Json$Encode$int = _Json_wrap;
+var elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
+var elm$json$Json$Encode$null = _Json_encodeNull;
+var author$project$Data$Encode$action = function (a) {
+	switch (a.$) {
+		case 'PickCard':
+			var i = a.a;
+			return A2(
+				author$project$Data$Encode$field,
+				'PickCard',
+				elm$json$Json$Encode$int(i));
+		case 'CancelCard':
+			return A2(author$project$Data$Encode$field, 'CancelCard', elm$json$Json$Encode$null);
+		case 'GetResource':
+			var x = a.a;
+			var y = a.b;
+			var z = a.c;
+			return A2(
+				author$project$Data$Encode$field,
+				'GetResource',
+				A2(
+					elm$json$Json$Encode$list,
+					elm$json$Json$Encode$int,
+					_List_fromArray(
+						[x, y, z])));
+		case 'Validate':
+			return A2(author$project$Data$Encode$field, 'Validate', elm$json$Json$Encode$null);
+		default:
+			return A2(author$project$Data$Encode$field, 'Unvalidate', elm$json$Json$Encode$null);
+	}
+};
 var elm$json$Json$Encode$string = _Json_wrap;
 var author$project$Data$Encode$connectInfo = function (ci) {
 	return elm$json$Json$Encode$object(
@@ -5168,16 +5359,6 @@ var author$project$Data$Encode$connectInfo = function (ci) {
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
-var elm$json$Json$Encode$int = _Json_wrap;
-var elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
-	});
 var author$project$Data$Encode$createGame = F2(
 	function (name, playerCount) {
 		return A2(
@@ -5190,25 +5371,26 @@ var author$project$Data$Encode$createGame = F2(
 				]));
 	});
 var author$project$Data$Encode$fromPlayer = function (fp) {
-	if (fp.$ === 'CreateGame') {
-		var name = fp.a;
-		var playerCount = fp.b;
-		return elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'CreateGame',
-					A2(author$project$Data$Encode$createGame, name, playerCount))
-				]));
-	} else {
-		var ci = fp.a;
-		return elm$json$Json$Encode$object(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(
-					'Connect',
-					author$project$Data$Encode$connectInfo(ci))
-				]));
+	switch (fp.$) {
+		case 'CreateGame':
+			var name = fp.a;
+			var playerCount = fp.b;
+			return A2(
+				author$project$Data$Encode$field,
+				'CreateGame',
+				A2(author$project$Data$Encode$createGame, name, playerCount));
+		case 'Connect':
+			var ci = fp.a;
+			return A2(
+				author$project$Data$Encode$field,
+				'Connect',
+				author$project$Data$Encode$connectInfo(ci));
+		default:
+			var a = fp.a;
+			return A2(
+				author$project$Data$Encode$field,
+				'Action',
+				author$project$Data$Encode$action(a));
 	}
 };
 var author$project$Data$Encode$encodeFromPlayer = function (fp) {
@@ -5254,14 +5436,174 @@ var author$project$F_Update$handleNewGameMessage = F2(
 							A2(author$project$C_Data$CreateGame, ngd.name, ngd.playerCount))));
 		}
 	});
+var elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var author$project$ListUtil$enumerate = elm$core$List$indexedMap(elm$core$Tuple$pair);
+var elm$core$Array$fromListHelp = F3(
+	function (list, nodeList, nodeListSize) {
+		fromListHelp:
+		while (true) {
+			var _n0 = A2(elm$core$Elm$JsArray$initializeFromList, elm$core$Array$branchFactor, list);
+			var jsArray = _n0.a;
+			var remainingItems = _n0.b;
+			if (_Utils_cmp(
+				elm$core$Elm$JsArray$length(jsArray),
+				elm$core$Array$branchFactor) < 0) {
+				return A2(
+					elm$core$Array$builderToArray,
+					true,
+					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
+			} else {
+				var $temp$list = remainingItems,
+					$temp$nodeList = A2(
+					elm$core$List$cons,
+					elm$core$Array$Leaf(jsArray),
+					nodeList),
+					$temp$nodeListSize = nodeListSize + 1;
+				list = $temp$list;
+				nodeList = $temp$nodeList;
+				nodeListSize = $temp$nodeListSize;
+				continue fromListHelp;
+			}
+		}
+	});
+var elm$core$Array$fromList = function (list) {
+	if (!list.b) {
+		return elm$core$Array$empty;
+	} else {
+		return A3(elm$core$Array$fromListHelp, list, _List_Nil, 0);
+	}
+};
+var elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var elm$core$Array$bitMask = 4294967295 >>> (32 - elm$core$Array$shiftStep);
+var elm$core$Bitwise$and = _Bitwise_and;
+var elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
+var elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = elm$core$Array$bitMask & (index >>> shift);
+			var _n0 = A2(elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_n0.$ === 'SubTree') {
+				var subTree = _n0.a;
+				var $temp$shift = shift - elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _n0.a;
+				return A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var elm$core$Basics$ge = _Utils_ge;
+var elm$core$Array$get = F2(
+	function (index, _n0) {
+		var len = _n0.a;
+		var startShift = _n0.b;
+		var tree = _n0.c;
+		var tail = _n0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			elm$core$Array$tailIndex(len)) > -1) ? elm$core$Maybe$Just(
+			A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, tail)) : elm$core$Maybe$Just(
+			A3(elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var author$project$ListUtil$get = function (index) {
+	return A2(
+		elm$core$Basics$composeR,
+		elm$core$Array$fromList,
+		elm$core$Array$get(index));
+};
+var elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2(elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var author$project$ListUtil$findIndex = F2(
+	function (target, list) {
+		return A2(
+			author$project$ListUtil$get,
+			0,
+			A2(
+				elm$core$List$map,
+				elm$core$Tuple$first,
+				A2(
+					elm$core$List$filter,
+					function (_n0) {
+						var i = _n0.a;
+						var element = _n0.b;
+						return _Utils_eq(element, target);
+					},
+					author$project$ListUtil$enumerate(list))));
+	});
+var elm$core$Basics$negate = function (n) {
+	return -n;
+};
 var elm$core$Debug$log = _Debug_log;
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var author$project$F_Update$update = F2(
 	function (msg, model) {
 		var updateActiveGame = F2(
 			function (playerInfo, activeGameInfo) {
+				var playerId = A2(
+					elm$core$Maybe$withDefault,
+					-1,
+					A2(author$project$ListUtil$findIndex, playerInfo.playerName, activeGameInfo.connectedPlayers));
 				return _Utils_Tuple2(
 					author$project$A_Model$InGame(
-						A6(author$project$A_Model$GameModel, activeGameInfo.name, playerInfo.playerName, playerInfo.cards, activeGameInfo.playerCount, activeGameInfo.connectedPlayers, activeGameInfo.game)),
+						{
+							connectedPlayers: activeGameInfo.connectedPlayers,
+							game: activeGameInfo.game,
+							gameName: activeGameInfo.name,
+							play: A2(elm$core$Maybe$withDefault, author$project$A_Model$NoAction, playerInfo.play),
+							playerCount: activeGameInfo.playerCount,
+							playerHand: playerInfo.cards,
+							playerId: playerId,
+							playerName: playerInfo.playerName
+						}),
 					elm$core$Platform$Cmd$none);
 			});
 		var noUpdate = _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
@@ -5271,8 +5613,10 @@ var author$project$F_Update$update = F2(
 				var _n6 = author$project$Data$Decode$decodeToPlayer(m);
 				if (_n6.$ === 'Ok') {
 					var decodedMsg = _n6.a;
-					return f(decodedMsg);
+					return f(
+						A2(elm$core$Debug$log, 'decoded message', decodedMsg));
 				} else {
+					var e = _n6.a;
 					return noUpdate;
 				}
 			});
@@ -5297,8 +5641,15 @@ var author$project$F_Update$update = F2(
 						return noUpdate;
 					case 'NewPlayerName':
 						return noUpdate;
-					default:
+					case 'JoinGame':
 						return noUpdate;
+					default:
+						var action = gameMsg.a;
+						return _Utils_Tuple2(
+							model,
+							author$project$Websocket$send(
+								author$project$Data$Encode$encodeFromPlayer(
+									author$project$C_Data$Action(action))));
 				}
 			});
 		var updateLobby = F2(
@@ -5335,7 +5686,7 @@ var author$project$F_Update$update = F2(
 									lobbyModel,
 									{playerName: name})),
 							elm$core$Platform$Cmd$none);
-					default:
+					case 'JoinGame':
 						var gameName = lobbyMsg.a;
 						return _Utils_Tuple2(
 							model,
@@ -5343,6 +5694,9 @@ var author$project$F_Update$update = F2(
 								author$project$Data$Encode$encodeFromPlayer(
 									author$project$C_Data$Connect(
 										A2(author$project$C_Data$ConnectInfo, gameName, lobbyModel.playerName)))));
+					default:
+						var a = lobbyMsg.a;
+						return noUpdate;
 				}
 			});
 		if (model.$ === 'InLobby') {
@@ -5353,19 +5707,9 @@ var author$project$F_Update$update = F2(
 			return A2(updateGame, msg, gameModel);
 		}
 	});
-var elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
+var author$project$Views$Game$ActiveGameState = F3(
+	function (playerHand, game, playerData) {
+		return {game: game, playerData: playerData, playerHand: playerHand};
 	});
 var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 	switch (handler.$) {
@@ -5381,11 +5725,516 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 };
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$h3 = _VirtualDom_node('h3');
-var elm$html$Html$li = _VirtualDom_node('li');
+var elm$html$Html$p = _VirtualDom_node('p');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var author$project$Views$Game$viewBoard = function (playerData) {
+	return A2(
+		elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text('Votre plateau')
+					])),
+				A2(
+				elm$html$Html$div,
+				_List_Nil,
+				A2(
+					elm$core$List$map,
+					function (c) {
+						return A2(
+							elm$html$Html$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									elm$html$Html$text(c.name)
+								]));
+					},
+					playerData.boardCards))
+			]));
+};
+var author$project$A_Model$PickCard = function (a) {
+	return {$: 'PickCard', a: a};
+};
+var author$project$B_Message$PerformAction = function (a) {
+	return {$: 'PerformAction', a: a};
+};
+var elm$html$Html$button = _VirtualDom_node('button');
+var elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			elm$virtual_dom$VirtualDom$on,
+			event,
+			elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		elm$html$Html$Events$on,
+		'click',
+		elm$json$Json$Decode$succeed(msg));
+};
+var author$project$Views$Game$viewCards = function (cards) {
+	var viewCard = F2(
+		function (i, card) {
+			return A2(
+				elm$html$Html$p,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text(card.name),
+						A2(
+						elm$html$Html$button,
+						_List_fromArray(
+							[
+								elm$html$Html$Events$onClick(
+								author$project$B_Message$PerformAction(
+									author$project$A_Model$PickCard(i)))
+							]),
+						_List_fromArray(
+							[
+								elm$html$Html$text('Jouer!')
+							]))
+					]));
+		});
+	return A2(
+		elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text('Votre main')
+					])),
+				A2(
+				elm$html$Html$div,
+				_List_Nil,
+				A2(elm$core$List$indexedMap, viewCard, cards))
+			]));
+};
+var author$project$A_Model$CancelCard = {$: 'CancelCard'};
+var author$project$A_Model$GetResource = F3(
+	function (a, b, c) {
+		return {$: 'GetResource', a: a, b: b, c: c};
+	});
+var author$project$A_Model$Validate = {$: 'Validate'};
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Basics$not = _Basics_not;
+var elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var elm$core$List$all = F2(
+	function (isOkay, list) {
+		return !A2(
+			elm$core$List$any,
+			A2(elm$core$Basics$composeL, elm$core$Basics$not, isOkay),
+			list);
+	});
+var author$project$A_Model$isVerdictOk = function (rav) {
+	return A2(
+		elm$core$List$all,
+		elm$core$Basics$identity,
+		_List_fromArray(
+			[
+				A2(
+				elm$core$List$all,
+				elm$core$Basics$eq(0),
+				rav.extraResources),
+				A2(
+				elm$core$List$all,
+				elm$core$Basics$eq(0),
+				rav.missingResources),
+				!rav.missingGold
+			]));
+};
+var author$project$Views$Game$ResourceAttributes = F3(
+	function (cost, name, production) {
+		return {cost: cost, name: name, production: production};
+	});
+var author$project$Views$Game$adjacentPlayerNames = _List_fromArray(
+	['Joueur de gauche', 'Vous', 'Joueur de droite']);
+var author$project$Views$Game$nothing = A2(elm$html$Html$div, _List_Nil, _List_Nil);
+var author$project$Views$Game$resourceNames = _List_fromArray(
+	['Argile', 'Bois', 'Minerai', 'Pierre', 'Verre', 'Papyrus', 'Tissu']);
+var elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
+		}
+	});
+var elm$core$List$concat = function (lists) {
+	return A3(elm$core$List$foldr, elm$core$List$append, _List_Nil, lists);
+};
+var elm$core$List$map3 = _List_map3;
+var elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var elm$html$Html$h4 = _VirtualDom_node('h4');
+var elm$html$Html$i = _VirtualDom_node('i');
+var elm$html$Html$table = _VirtualDom_node('table');
+var elm$html$Html$td = _VirtualDom_node('td');
+var elm$html$Html$tr = _VirtualDom_node('tr');
+var author$project$Views$Game$viewResourceChoice = F3(
+	function (gameModel, state, data) {
+		var viewProduction = F3(
+			function (resourceCosts, production, msg) {
+				var resourceButtons = A2(
+					elm$core$List$map,
+					function (_n3) {
+						var i = _n3.a;
+						var attr = _n3.b;
+						return A2(
+							elm$html$Html$td,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$button,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(
+											author$project$B_Message$PerformAction(
+												msg(i + 1)))
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text(
+											attr.name + (' (-' + (elm$core$String$fromInt(attr.cost) + 'g)')))
+										]))
+								]));
+					},
+					A2(
+						elm$core$List$filter,
+						function (_n2) {
+							var i = _n2.a;
+							var attr = _n2.b;
+							return attr.production > 0;
+						},
+						A2(
+							elm$core$List$indexedMap,
+							F2(
+								function (i, attr) {
+									return _Utils_Tuple2(i, attr);
+								}),
+							A4(elm$core$List$map3, author$project$Views$Game$ResourceAttributes, resourceCosts, author$project$Views$Game$resourceNames, production))));
+				return A2(
+					elm$html$Html$table,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$tr,
+							_List_Nil,
+							A2(
+								elm$core$List$cons,
+								A2(
+									elm$html$Html$td,
+									_List_Nil,
+									_List_fromArray(
+										[
+											A2(
+											elm$html$Html$button,
+											_List_fromArray(
+												[
+													elm$html$Html$Events$onClick(
+													author$project$B_Message$PerformAction(
+														msg(0)))
+												]),
+											_List_fromArray(
+												[
+													elm$html$Html$text('Rien')
+												]))
+										])),
+								resourceButtons))
+						]));
+			});
+		var viewPlayer = F4(
+			function (resourceCosts, productions, playerName, msg) {
+				return A2(
+					elm$html$Html$td,
+					_List_Nil,
+					elm$core$List$concat(
+						_List_fromArray(
+							[
+								_List_fromArray(
+								[
+									A2(
+									elm$html$Html$h4,
+									_List_Nil,
+									_List_fromArray(
+										[
+											elm$html$Html$text(playerName)
+										]))
+								]),
+								A2(
+								elm$core$List$indexedMap,
+								F2(
+									function (i, production) {
+										return A3(
+											viewProduction,
+											resourceCosts,
+											production,
+											msg(i));
+									}),
+								productions)
+							])));
+			});
+		var viewCard = function (card) {
+			return A2(
+				elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text('Jouer la carte '),
+						A2(
+						elm$html$Html$i,
+						_List_Nil,
+						_List_fromArray(
+							[
+								elm$html$Html$text(card.name)
+							]))
+					]));
+		};
+		var verdictInfo = function () {
+			var _n1 = author$project$A_Model$isVerdictOk(data.verdict);
+			if (_n1) {
+				return A2(
+					elm$html$Html$button,
+					_List_fromArray(
+						[
+							elm$html$Html$Events$onClick(
+							author$project$B_Message$PerformAction(author$project$A_Model$Validate))
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('Valider!')
+						]));
+			} else {
+				return A2(
+					elm$html$Html$p,
+					_List_Nil,
+					_List_fromArray(
+						[
+							elm$html$Html$text('Vous ne pouvez pas jouer cette carte')
+						]));
+			}
+		}();
+		var playerData = A2(author$project$ListUtil$get, gameModel.playerId, state.game.players);
+		var cancelButton = A2(
+			elm$html$Html$button,
+			_List_fromArray(
+				[
+					elm$html$Html$Events$onClick(
+					author$project$B_Message$PerformAction(author$project$A_Model$CancelCard))
+				]),
+			_List_fromArray(
+				[
+					elm$html$Html$text('Jouer une autre carte')
+				]));
+		var cancelAndConfirm = A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$div,
+					_List_Nil,
+					_List_fromArray(
+						[verdictInfo])),
+					A2(
+					elm$html$Html$div,
+					_List_Nil,
+					_List_fromArray(
+						[cancelButton]))
+				]));
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$core$Maybe$withDefault,
+					author$project$Views$Game$nothing,
+					A2(
+						elm$core$Maybe$map,
+						viewCard,
+						A2(author$project$ListUtil$get, data.cardIndex, state.playerHand))),
+					cancelAndConfirm,
+					function (x) {
+					return A2(
+						elm$html$Html$table,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(elm$html$Html$tr, _List_Nil, x)
+							]));
+				}(
+					A2(
+						elm$core$List$indexedMap,
+						F2(
+							function (i, _n0) {
+								var c = _n0.a;
+								var p = _n0.b;
+								var n = _n0.c;
+								return A4(
+									viewPlayer,
+									c,
+									p,
+									n,
+									author$project$A_Model$GetResource(i));
+							}),
+						A4(
+							elm$core$List$map3,
+							F3(
+								function (a, b, c) {
+									return _Utils_Tuple3(a, b, c);
+								}),
+							state.playerData.resourceCosts,
+							state.playerData.resourceProductions,
+							author$project$Views$Game$adjacentPlayerNames)))
+				]));
+	});
+var author$project$A_Model$Unvalidate = {$: 'Unvalidate'};
+var author$project$Views$Game$viewTurnStatus = F3(
+	function (gameModel, state, data) {
+		var viewCard = function (card) {
+			return A2(
+				elm$html$Html$h3,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text('La carte '),
+						A2(
+						elm$html$Html$i,
+						_List_Nil,
+						_List_fromArray(
+							[
+								elm$html$Html$text(card.name)
+							])),
+						elm$html$Html$text(' va être jouée')
+					]));
+		};
+		var cancelButton = A2(
+			elm$html$Html$button,
+			_List_fromArray(
+				[
+					elm$html$Html$Events$onClick(
+					author$project$B_Message$PerformAction(author$project$A_Model$Unvalidate))
+				]),
+			_List_fromArray(
+				[
+					elm$html$Html$text('Annuler')
+				]));
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$core$Maybe$withDefault,
+					author$project$Views$Game$nothing,
+					A2(
+						elm$core$Maybe$map,
+						viewCard,
+						A2(author$project$ListUtil$get, data.cardIndex, state.playerHand))),
+					cancelButton
+				]));
+	});
+var author$project$Views$Game$viewPlay = F2(
+	function (gameModel, state) {
+		var _n0 = gameModel.play;
+		switch (_n0.$) {
+			case 'NoAction':
+				return author$project$Views$Game$viewCards(state.playerHand);
+			case 'ChoosingResources':
+				var data = _n0.a;
+				return A3(author$project$Views$Game$viewResourceChoice, gameModel, state, data);
+			default:
+				var data = _n0.a;
+				return A3(author$project$Views$Game$viewTurnStatus, gameModel, state, data);
+		}
+	});
+var elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _n0 = f(mx);
+		if (_n0.$ === 'Just') {
+			var x = _n0.a;
+			return A2(elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var author$project$Views$Game$viewActiveGame = F2(
+	function (gameModel, state) {
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			A2(
+				elm$core$List$filterMap,
+				elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						A2(
+						elm$core$Maybe$map,
+						author$project$Views$Game$viewBoard,
+						A2(author$project$ListUtil$get, gameModel.playerId, state.game.players)),
+						elm$core$Maybe$Just(
+						A2(author$project$Views$Game$viewPlay, gameModel, state))
+					])));
+	});
+var elm$html$Html$li = _VirtualDom_node('li');
 var elm$html$Html$ul = _VirtualDom_node('ul');
-var author$project$G_View$viewConnectedPlayers = function (connectedPlayers) {
+var author$project$Views$Game$viewConnectedPlayers = function (connectedPlayers) {
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
@@ -5415,17 +6264,77 @@ var author$project$G_View$viewConnectedPlayers = function (connectedPlayers) {
 					connectedPlayers))
 			]));
 };
+var elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var elm$core$Maybe$map3 = F4(
+	function (func, ma, mb, mc) {
+		if (ma.$ === 'Nothing') {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var a = ma.a;
+			if (mb.$ === 'Nothing') {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var b = mb.a;
+				if (mc.$ === 'Nothing') {
+					return elm$core$Maybe$Nothing;
+				} else {
+					var c = mc.a;
+					return elm$core$Maybe$Just(
+						A3(func, a, b, c));
+				}
+			}
+		}
+	});
 var elm$html$Html$h2 = _VirtualDom_node('h2');
-var elm$html$Html$p = _VirtualDom_node('p');
-var author$project$G_View$viewGame = function (gameModel) {
+var author$project$Views$Game$viewGame = function (gameModel) {
 	var welcomeText = function () {
-		var _n0 = gameModel.game;
-		if (_n0.$ === 'Just') {
+		var _n1 = gameModel.game;
+		if (_n1.$ === 'Just') {
 			return 'Game started (';
 		} else {
 			return 'Waiting for more players (';
 		}
 	}();
+	var maybeViewActiveGame = function () {
+		var state = A4(
+			elm$core$Maybe$map3,
+			author$project$Views$Game$ActiveGameState,
+			gameModel.playerHand,
+			gameModel.game,
+			A2(
+				elm$core$Maybe$andThen,
+				author$project$ListUtil$get(gameModel.playerId),
+				A2(
+					elm$core$Maybe$map,
+					function ($) {
+						return $.players;
+					},
+					gameModel.game)));
+		if (state.$ === 'Just') {
+			var s = state.a;
+			return A2(author$project$Views$Game$viewActiveGame, gameModel, s);
+		} else {
+			return A2(elm$html$Html$div, _List_Nil, _List_Nil);
+		}
+	}();
+	var maxPlayers = elm$core$String$fromInt(gameModel.playerCount);
+	var connectedPlayersCount = elm$core$String$fromInt(
+		elm$core$List$length(gameModel.connectedPlayers));
+	var viewGameStatus = A2(
+		elm$html$Html$p,
+		_List_Nil,
+		_List_fromArray(
+			[
+				elm$html$Html$text(welcomeText + (connectedPlayersCount + ('/' + (maxPlayers + ')'))))
+			]));
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
@@ -5438,16 +6347,9 @@ var author$project$G_View$viewGame = function (gameModel) {
 					[
 						elm$html$Html$text('Welcome to game ' + gameModel.gameName)
 					])),
-				A2(
-				elm$html$Html$p,
-				_List_Nil,
-				_List_fromArray(
-					[
-						elm$html$Html$text(
-						welcomeText + (elm$core$String$fromInt(
-							elm$core$List$length(gameModel.connectedPlayers)) + ('/' + (elm$core$String$fromInt(gameModel.playerCount) + ')'))))
-					])),
-				author$project$G_View$viewConnectedPlayers(gameModel.connectedPlayers)
+				viewGameStatus,
+				author$project$Views$Game$viewConnectedPlayers(gameModel.connectedPlayers),
+				maybeViewActiveGame
 			]));
 };
 var author$project$B_Message$NewPlayerName = function (a) {
@@ -5456,50 +6358,32 @@ var author$project$B_Message$NewPlayerName = function (a) {
 var author$project$B_Message$JoinGame = function (a) {
 	return {$: 'JoinGame', a: a};
 };
-var elm$html$Html$button = _VirtualDom_node('button');
-var elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var elm$html$Html$Events$on = F2(
-	function (event, decoder) {
+var author$project$Views$Lobby$viewGameInfos = function (gameInfos) {
+	var viewGameInfo = function (g) {
 		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		elm$html$Html$Events$on,
-		'click',
-		elm$json$Json$Decode$succeed(msg));
-};
-var author$project$G_View$viewGameInfo = function (g) {
-	return A2(
-		elm$html$Html$p,
-		_List_Nil,
-		_List_fromArray(
-			[
-				elm$html$Html$text(
-				g.name + (' (nombre maximum de joueurs: ' + (elm$core$String$fromInt(g.playerCount) + ')'))),
-				A2(
-				elm$html$Html$button,
-				_List_fromArray(
-					[
-						elm$html$Html$Events$onClick(
-						author$project$B_Message$JoinGame(g.name))
-					]),
-				_List_fromArray(
-					[
-						elm$html$Html$text('Jouer!')
-					]))
-			]));
-};
-var author$project$G_View$viewGameInfos = function (g) {
+			elm$html$Html$p,
+			_List_Nil,
+			_List_fromArray(
+				[
+					elm$html$Html$text(
+					g.name + (' (nombre maximum de joueurs: ' + (elm$core$String$fromInt(g.playerCount) + ')'))),
+					A2(
+					elm$html$Html$button,
+					_List_fromArray(
+						[
+							elm$html$Html$Events$onClick(
+							author$project$B_Message$JoinGame(g.name))
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('Jouer!')
+						]))
+				]));
+	};
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
-		A2(elm$core$List$map, author$project$G_View$viewGameInfo, g));
+		A2(elm$core$List$map, viewGameInfo, gameInfos));
 };
 var author$project$B_Message$AddGame = {$: 'AddGame'};
 var author$project$B_Message$GameName = function (a) {
@@ -5511,20 +6395,6 @@ var author$project$B_Message$NewGame = function (a) {
 var author$project$B_Message$PlayerCount = function (a) {
 	return {$: 'PlayerCount', a: a};
 };
-var elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
-var elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var elm$core$String$toInt = _String_toInt;
 var elm$html$Html$input = _VirtualDom_node('input');
 var elm$html$Html$Attributes$stringProperty = F2(
@@ -5566,7 +6436,7 @@ var elm$html$Html$Events$onInput = function (tagger) {
 			elm$html$Html$Events$alwaysStop,
 			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
 };
-var author$project$G_View$viewNewGameForm = function (ngd) {
+var author$project$Views$Lobby$viewNewGameForm = function (ngd) {
 	var playerCountForm = function (playerCount) {
 		return A2(
 			elm$html$Html$input,
@@ -5623,7 +6493,7 @@ var author$project$G_View$viewNewGameForm = function (ngd) {
 					]))
 			]));
 };
-var author$project$G_View$viewLobby = function (lobbyModel) {
+var author$project$Views$Lobby$viewLobby = function (lobbyModel) {
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
@@ -5646,17 +6516,17 @@ var author$project$G_View$viewLobby = function (lobbyModel) {
 					[
 						elm$html$Html$text('Liste des parties')
 					])),
-				author$project$G_View$viewGameInfos(lobbyModel.games),
-				author$project$G_View$viewNewGameForm(lobbyModel.newGameData)
+				author$project$Views$Lobby$viewGameInfos(lobbyModel.games),
+				author$project$Views$Lobby$viewNewGameForm(lobbyModel.newGameData)
 			]));
 };
 var author$project$G_View$view = function (model) {
 	if (model.$ === 'InLobby') {
 		var lobbyModel = model.a;
-		return author$project$G_View$viewLobby(lobbyModel);
+		return author$project$Views$Lobby$viewLobby(lobbyModel);
 	} else {
 		var gameModel = model.a;
-		return author$project$G_View$viewGame(gameModel);
+		return author$project$Views$Game$viewGame(gameModel);
 	}
 };
 var author$project$B_Message$WsMessage = function (a) {
@@ -5893,6 +6763,17 @@ var elm$url$Url$fromString = function (str) {
 };
 var elm$browser$Browser$element = _Browser_element;
 var author$project$Main$main = elm$browser$Browser$element(
-	{init: author$project$E_Init$init, subscriptions: author$project$H_Subscriptions$subscriptions, update: author$project$F_Update$update, view: author$project$G_View$view});
+	{
+		init: author$project$E_Init$init,
+		subscriptions: author$project$H_Subscriptions$subscriptions,
+		update: F2(
+			function (a, b) {
+				return A2(
+					elm$core$Debug$log,
+					'model',
+					A2(author$project$F_Update$update, a, b));
+			}),
+		view: author$project$G_View$view
+	});
 _Platform_export({'Main':{'init':author$project$Main$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
