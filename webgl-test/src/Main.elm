@@ -8,8 +8,9 @@ import Html.Attributes exposing (width, height, style)
 import Json.Decode exposing (Value)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (vec3, Vec3)
-import Render.Card as Card
+import Render.CardPart as Card
 import Render.Font exposing (fragmentText, loadTexture, renderText, vertexText, Vertex)
+import Render.Primitive as Primitive
 import Task
 import WebGL exposing (Mesh, Shader)
 import WebGL.Settings.Blend as Blend
@@ -71,7 +72,13 @@ update msg model =
             text =
               { fontInfo = fontInfo
               , mesh = WebGL.triangles <| List.concat
-                  [ Card.getText fontInfo (String.toUpper "NORMALÀÉÈÊ")
+                  [ Card.getBackground fontInfo (vec3 0.5 0.5 0.5)
+                  , Card.getResourceStripe fontInfo (vec3 0.4 0.2 0.0)
+                  , Card.getImage fontInfo (vec3 0.4 0.4 0.0)
+                  , Card.getText fontInfo (String.toUpper "NORMALÀÉÈÊ")
+                  , Card.getResourceCost
+                    [ Primitive.octogon fontInfo (vec3 0.0 0.0 0.0)
+                    ]
                   ]
               }
           in ( { model | text = Just text }, Cmd.none )
@@ -101,7 +108,7 @@ view model =
             vertexText
             fragmentText
             text.mesh
-            { perspective = perspective model.time, texture = texture }
+            { perspective = perspective 0.0, texture = texture }
         ]
 
 perspective : Float -> Mat4

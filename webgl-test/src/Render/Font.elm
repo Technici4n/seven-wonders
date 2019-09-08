@@ -12,7 +12,7 @@ import WebGL.Texture as Texture exposing (defaultOptions, Texture)
 
 loadTexture : Task Texture.Error Texture
 loadTexture =
-  Texture.loadWith { defaultOptions | minify = Texture.nearest } "./font.png"
+  Texture.loadWith { defaultOptions | minify = Texture.nearest } "/font.png"
 
 
 renderText : LoadedFontInfo -> Vec3 -> String -> VertexList Vertex

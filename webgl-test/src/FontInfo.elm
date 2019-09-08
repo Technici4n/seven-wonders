@@ -2,12 +2,12 @@ module FontInfo exposing (loadFontInfo, CharInfo, CommonInfo, LoadedFontInfo)
 
 import Dict as Dict exposing (Dict)
 import Http
-import Json.Decode as Decode exposing (field, int, list, string, Decoder)
+import Json.Decode as Decode exposing (field, index, int, list, string, Decoder)
 
 loadFontInfo : (Result Http.Error LoadedFontInfo -> msg) -> Cmd msg
 loadFontInfo readyMessage =
   Http.get
-    { url = "./font.json"
+    { url = "/font.json"
     , expect = Http.expectJson (Result.map buildLoadedFontInfo >> readyMessage) fontInfoDecoder
     }
 
@@ -38,6 +38,7 @@ type alias CommonInfo =
   { lineHeight : Int
   , scaleW : Int
   , scaleH : Int
+  , whitestCell : (Int, Int)
   }
 
 type alias CharInfo =
@@ -71,7 +72,11 @@ charInfoDecoder =
 
 commonInfoDecoder : Decoder CommonInfo
 commonInfoDecoder =
-  Decode.map3 CommonInfo
+  Decode.map4 CommonInfo
     (field "lineHeight" int)
     (field "scaleW" int)
     (field "scaleH" int)
+    (field "whitestCell" <|
+      Decode.map2 Tuple.pair
+        (index 0 int)
+        (index 1 int))
