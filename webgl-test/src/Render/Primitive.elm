@@ -1,22 +1,22 @@
 module Render.Primitive exposing (octogon, square)
 
 import Dict
-import FontInfo exposing (LoadedFontInfo)
+import Font exposing (Font)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (vec2, Vec2)
 import Math.Vector3 as Vec3 exposing (vec3, Vec3)
-import Render.Font exposing (Vertex)
+import Render.Text exposing (Vertex)
 import Render.VertexList as VertexList exposing (VertexList)
 
-whitestUv : LoadedFontInfo -> Vec2
+whitestUv : Font -> Vec2
 whitestUv fontInfo =
-  let (whitex, whitey) = fontInfo.commonInfo.whitestCell
+  let (whitex, whitey) = fontInfo.common.whitestCell
   in
     vec2
-      (toFloat whitex / toFloat fontInfo.commonInfo.scaleW)
-      (toFloat whitey / toFloat fontInfo.commonInfo.scaleH)
+      (toFloat whitex / toFloat fontInfo.common.scaleW)
+      (toFloat whitey / toFloat fontInfo.common.scaleH)
 
-square : LoadedFontInfo -> Vec3 -> VertexList Vertex
+square : Font -> Vec3 -> VertexList Vertex
 square fontInfo color =
   let
     tl = vec3 0.0 1.0 0.0
@@ -35,7 +35,7 @@ square fontInfo color =
   in
     VertexList.fromFace a b c d
 
-octogon : LoadedFontInfo -> Vec3 -> VertexList Vertex
+octogon : Font -> Vec3 -> VertexList Vertex
 octogon fontInfo color =
   let
     size = 1.0

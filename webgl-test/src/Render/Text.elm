@@ -1,7 +1,7 @@
-module Render.Font exposing (fragmentText, loadTexture, renderText, vertexText, Vertex)
+module Render.Text exposing (fragmentShader, loadTexture, render, vertexShader, Vertex)
 
 import Dict as Dict
-import FontInfo exposing (CharInfo, CommonInfo, LoadedFontInfo)
+import Font exposing (CharInfo, CommonInfo, Font)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (vec2, Vec2)
 import Math.Vector3 as Vec3 exposing (vec3, Vec3)
@@ -15,29 +15,29 @@ loadTexture =
   Texture.loadWith { defaultOptions | minify = Texture.nearest } "/font.png"
 
 
-renderText : LoadedFontInfo -> Vec3 -> String -> VertexList Vertex
-renderText fontInfo color text =
+render : Font -> Vec3 -> String -> VertexList Vertex
+render font color text =
   let
     initialState = ([], 0)
     appendLetter charInfo (triangles, totalAdvance) =
       ( List.concat
         [ triangles
-        , renderLetter fontInfo color charInfo totalAdvance
+        , renderLetter font color charInfo totalAdvance
         ]
       , totalAdvance + charInfo.xadvance
       )
   in
     text
     |> String.toList
-    |> List.filterMap (\char -> Dict.get (String.fromChar char) fontInfo.dict)
+    |> List.filterMap (\char -> Dict.get (String.fromChar char) font.chars)
     |> List.foldl appendLetter initialState
     |> Tuple.first
 
-renderLetter : LoadedFontInfo -> Vec3 -> CharInfo -> Int -> VertexList Vertex
-renderLetter info color charInfo totalAdvance =
+renderLetter : Font -> Vec3 -> CharInfo -> Int -> VertexList Vertex
+renderLetter font color charInfo totalAdvance =
   let
-    imageHeight = toFloat info.commonInfo.scaleH
-    imageWidth = toFloat info.commonInfo.scaleW
+    imageHeight = toFloat font.common.scaleH
+    imageWidth = toFloat font.common.scaleW
     x = toFloat charInfo.x
     y = toFloat charInfo.y
     width = toFloat charInfo.width
@@ -46,7 +46,7 @@ renderLetter info color charInfo totalAdvance =
     uv_tr = vec2 ((x+width) / imageWidth) (y / imageHeight)
     uv_br = vec2 ((x+width) / imageWidth) ((y+height) / imageHeight)
     uv_bl = vec2 (x / imageWidth) ((y+height) / imageHeight)
-    lineHeight = toFloat info.commonInfo.lineHeight
+    lineHeight = toFloat font.common.lineHeight
     xy_tl = vec2 (0.0) (height / lineHeight)
     xy_tr = vec2 (width / lineHeight) (height / lineHeight)
     xy_br = vec2 (width / lineHeight) (0.0)
@@ -59,15 +59,15 @@ renderLetter info color charInfo totalAdvance =
     toVec3 v2 =
       let xy = Vec2.toRecord v2
       in vec3 xy.x xy.y 0.0
-    vertex uv xy =
+    v uv xy =
       { color = color
       , position = Vec3.add (toVec3 xy) offset
       , texturePos = uv
       }
-    a = vertex uv_tl xy_tl
-    b = vertex uv_tr xy_tr
-    c = vertex uv_br xy_br
-    d = vertex uv_bl xy_bl
+    a = v uv_tl xy_tl
+    b = v uv_tr xy_tr
+    c = v uv_br xy_br
+    d = v uv_bl xy_bl
   in
     VertexList.fromFace a b c d
 
@@ -87,8 +87,8 @@ type alias Varying =
   , vtexturePos : Vec2
   }
 
-vertexText : Shader Vertex Uniforms Varying
-vertexText =
+vertexShader : Shader Vertex Uniforms Varying
+vertexShader =
   [glsl|
     attribute vec3 color;
     attribute vec3 position;
@@ -104,8 +104,8 @@ vertexText =
     }
   |]
 
-fragmentText : Shader {} Uniforms Varying
-fragmentText =
+fragmentShader : Shader {} Uniforms Varying
+fragmentShader =
   [glsl|
     uniform sampler2D texture;
     precision lowp float;

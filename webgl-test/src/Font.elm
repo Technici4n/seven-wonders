@@ -1,35 +1,35 @@
-module FontInfo exposing (loadFontInfo, CharInfo, CommonInfo, LoadedFontInfo)
+module Font exposing (load, CharInfo, CommonInfo, Font)
 
 import Dict as Dict exposing (Dict)
 import Http
 import Json.Decode as Decode exposing (field, index, int, list, string, Decoder)
 
-loadFontInfo : (Result Http.Error LoadedFontInfo -> msg) -> Cmd msg
-loadFontInfo readyMessage =
+load : (Result Http.Error Font -> msg) -> Cmd msg
+load readyMessage =
   Http.get
     { url = "/font.json"
     , expect = Http.expectJson (Result.map buildLoadedFontInfo >> readyMessage) fontInfoDecoder
     }
 
-getFontInfo : LoadedFontInfo -> String -> Maybe CharInfo
-getFontInfo loadedFontInfo string =
-  Dict.get string loadedFontInfo.dict
+getFontInfo : Font -> String -> Maybe CharInfo
+getFontInfo font string =
+  Dict.get string font.chars
 
-buildLoadedFontInfo : FontInfo -> LoadedFontInfo
+buildLoadedFontInfo : RawFontInfo -> Font
 buildLoadedFontInfo fontInfo =
-  { dict =
+  { chars =
     fontInfo.chars
     |> List.map (\charInfo -> (charInfo.char, charInfo))
     |> Dict.fromList
-  , commonInfo = fontInfo.common 
+  , common = fontInfo.common 
   }
 
-type alias LoadedFontInfo =
-  { dict : Dict String CharInfo
-  , commonInfo : CommonInfo
+type alias Font =
+  { chars : Dict String CharInfo
+  , common : CommonInfo
   }
 
-type alias FontInfo =
+type alias RawFontInfo =
   { chars : List CharInfo
   , common : CommonInfo
   }
@@ -52,9 +52,9 @@ type alias CharInfo =
   , xadvance : Int
   }
 
-fontInfoDecoder : Decoder FontInfo
+fontInfoDecoder : Decoder RawFontInfo
 fontInfoDecoder =
-  Decode.map2 FontInfo
+  Decode.map2 RawFontInfo
     (field "chars" (list charInfoDecoder))
     (field "common" commonInfoDecoder)
 

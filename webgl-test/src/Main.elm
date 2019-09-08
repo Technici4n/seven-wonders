@@ -2,15 +2,15 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onAnimationFrameDelta)
-import FontInfo exposing (loadFontInfo, LoadedFontInfo)
+import Font exposing (Font)
 import Html exposing (text, Html)
 import Html.Attributes exposing (width, height, style)
 import Json.Decode exposing (Value)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (vec3, Vec3)
 import Render.CardPart as Card
-import Render.Font exposing (fragmentText, loadTexture, renderText, vertexText, Vertex)
 import Render.Primitive as Primitive
+import Render.Text as Text exposing (Vertex)
 import Task
 import WebGL exposing (Mesh, Shader)
 import WebGL.Settings.Blend as Blend
@@ -27,7 +27,7 @@ main =
     }
 
 type alias Text =
-  { fontInfo : LoadedFontInfo
+  { fontInfo : Font
   , mesh : Mesh Vertex
   }
 
@@ -40,7 +40,7 @@ type alias Model =
 type Msg
   = TextureLoaded (Result WebGL.Texture.Error Texture)
   | TimeElapsed Float
-  | FontInfoLoaded (Maybe LoadedFontInfo)
+  | FontInfoLoaded (Maybe Font)
 
 init : Value -> ( Model, Cmd Msg )
 init _ =
@@ -49,9 +49,9 @@ init _ =
     , time = 0.0
     }
   , Cmd.batch
-    [ loadTexture
+    [ Text.loadTexture
       |> Task.attempt TextureLoaded
-    , loadFontInfo (Result.toMaybe >> FontInfoLoaded)
+    , Font.load (Result.toMaybe >> FontInfoLoaded)
     ] 
   )
 
@@ -105,8 +105,8 @@ view model =
             [ Blend.add Blend.srcAlpha Blend.oneMinusSrcAlpha
             , DepthTest.default
             ]
-            vertexText
-            fragmentText
+            Text.vertexShader
+            Text.fragmentShader
             text.mesh
             { perspective = perspective 0.0, texture = texture }
         ]

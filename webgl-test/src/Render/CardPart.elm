@@ -1,19 +1,19 @@
 module Render.CardPart exposing (getBackground, getImage, getResourceCost, getResourceStripe, getText)
 
-import FontInfo exposing (LoadedFontInfo)
+import Font exposing (Font)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (vec3, Vec3)
 import Math.Vector4 as Vec4 exposing (vec4, Vec4)
-import Render.Font as Font exposing (Vertex)
 import Render.Primitive as Primitive
+import Render.Text as Text exposing (Vertex)
 import Render.VertexList as VertexList exposing (VertexList)
 
 chainTransforms : List (Mat4 -> Mat4) -> Mat4
 chainTransforms =
   List.foldr (\t st -> t st) Mat4.identity
 
-getText : LoadedFontInfo -> String -> VertexList Vertex
-getText fontInfo str =
+getText : Font -> String -> VertexList Vertex
+getText font str =
   let
     -- rotate text by 90 degrees counter-clockwise
     rotateText = Mat4.rotate (degrees 90) (vec3 0.0 0.0 1.0)
@@ -22,7 +22,7 @@ getText fontInfo str =
     translateText = Mat4.translate cardTextOffset
     transformationMatrix = chainTransforms [ rotateText, scaleText, translateText ]
   in
-    Font.renderText fontInfo (vec3 0.0 0.0 0.0) str
+    Text.render font (vec3 0.0 0.0 0.0) str
     |> VertexList.transformPosition transformationMatrix
 
 -- Card parameters
@@ -61,33 +61,33 @@ firstResourceOffset = vec3 ((cardWidth - imageWidth - resourceWidth) / 2) (cardH
 relativeResourceOffset : Vec3
 relativeResourceOffset = vec3 0.0 ( -1 * (resourceHeight + resourceSpacing) ) 0.0
 
-getBackground : LoadedFontInfo -> Vec3 -> VertexList Vertex
-getBackground fontInfo color =
+getBackground : Font -> Vec3 -> VertexList Vertex
+getBackground font color =
   let
     scaleToRectangle = Mat4.scale3 cardWidth cardHeight 1.0
     transformationMatrix = chainTransforms [ scaleToRectangle ]
   in
-    Primitive.square fontInfo color
+    Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
-getImage : LoadedFontInfo -> Vec3 -> VertexList Vertex
-getImage fontInfo color =
+getImage : Font -> Vec3 -> VertexList Vertex
+getImage font color =
   let
     scaleToRectangle = Mat4.scale3 imageWidth imageHeight 1
     translateToBottomRight = Mat4.translate imageOffset
     transformationMatrix = chainTransforms [ scaleToRectangle, translateToBottomRight ]
   in
-    Primitive.square fontInfo color
+    Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
-getResourceStripe : LoadedFontInfo -> Vec3 -> VertexList Vertex
-getResourceStripe fontInfo color =
+getResourceStripe : Font -> Vec3 -> VertexList Vertex
+getResourceStripe font color =
   let
     scaleToRectangle = Mat4.scale3 resourceStripeWidth resourceStripeHeight 1
     translate = Mat4.translate resourceStripeOffset
     transformationMatrix = chainTransforms [ scaleToRectangle, translate ]
   in
-    Primitive.square fontInfo color
+    Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
 getResourceCost : List (VertexList Vertex) -> VertexList Vertex
