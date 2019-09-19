@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
             .route("/ws", web::get().to(websocket))
             .service(fs::Files::new("/", "static").show_files_listing())
     })
-    .bind("0.0.0.0:8001")?.start();
+    .bind("0.0.0.0:25565")?.start();
 
     // start runtime
     sys.run().unwrap();

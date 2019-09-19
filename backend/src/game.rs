@@ -263,6 +263,7 @@ impl PlayerData {
 /// A card.
 #[derive(Debug, Clone, Serialize)]
 pub struct Card {
+    pub color: usize,
     pub name: String,
     pub gold_cost: u32,
     pub resource_cost: ResourceArray,
@@ -270,6 +271,14 @@ pub struct Card {
     pub chaining_targets: Vec<String>,
     pub chaining_sources: Vec<String>,
 }
+
+pub const COLOR_BLUE: usize = 0;
+pub const COLOR_BROWN: usize = 1;
+pub const COLOR_GRAY: usize = 2;
+pub const COLOR_GREEN: usize = 3;
+pub const COLOR_PURPLE: usize = 4;
+pub const COLOR_RED: usize = 5;
+pub const COLOR_YELLOW: usize = 6;
 
 pub const LEFT_PLAYER: usize = 0;
 pub const RIGHT_PLAYER: usize = 2;

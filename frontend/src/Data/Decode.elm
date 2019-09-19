@@ -2,6 +2,7 @@ module Data.Decode exposing (decodeToPlayer)
 
 import A_Model exposing
   ( Card
+  , CardColor(..)
   , CardEffect(..)
   , ChoseResourcesData
   , ChoosingResourcesData
@@ -15,7 +16,7 @@ import A_Model exposing
   )
 import C_Data exposing (ActiveGameInfo, PlayerInfo, ToPlayer(..))
 import Json.Decode as Decode
-import Json.Decode exposing (at, index, int, list, maybe, string, Decoder)
+import Json.Decode exposing (at, index, int, list, maybe, string, succeed, Decoder)
 
 decodeToPlayer : String -> Result String ToPlayer
 decodeToPlayer src =
@@ -55,14 +56,29 @@ playerInfo =
 
 card : Decoder Card
 card =
-  Decode.map6 Card
+  Decode.map7 Card
+    (at ["color"] cardColor)
     (at ["name"] string)
     (at ["gold_cost"] int)
     (at ["resource_cost"] resourceArray)
     (at ["effect"] cardEffect)
     (at ["chaining_targets"] (list string))
     (at ["chaining_sources"] (list string))
-  
+
+cardColor : Decoder CardColor
+cardColor =
+  Decode.map (\x ->
+    case x of
+      0 -> Blue
+      1 -> Brown
+      2 -> Gray
+      3 -> Green
+      4 -> Purple
+      5 -> Red
+      6 -> Yellow
+      _ -> Purple
+  ) int
+
 resourceArray : Decoder ResourceArray
 resourceArray = list int
 

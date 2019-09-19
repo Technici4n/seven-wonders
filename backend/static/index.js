@@ -4,7 +4,7 @@ let app = Elm.Main.init({
 });
 
 // WEBSOCKET HANDLING
-const SERVER_ADDRESS = "ws://localhost:8001/ws";
+const SERVER_ADDRESS = `ws://${window.location.hostname}:${window.location.port}/ws`;
 let socket = new WebSocket(SERVER_ADDRESS);
 let sendMessage = (message) => {
     socket.send(message);

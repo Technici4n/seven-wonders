@@ -4,4 +4,6 @@ import B_Message exposing (Msg(..))
 import Websocket exposing (listen)
 
 subscriptions model =
-  listen WsMessage
+  Sub.batch
+    [ listen WsMessage
+    ]

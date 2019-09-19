@@ -1,4 +1,20 @@
-use crate::game::{Card, CardEffect, ResourceArray, RIGHT_PLAYER, LEFT_PLAYER, SCIENCE_COMPASS, SCIENCE_GEAR, SCIENCE_TABLET};
+use crate::game::{
+    Card,
+    CardEffect,
+    ResourceArray, 
+    RIGHT_PLAYER,
+    LEFT_PLAYER,
+    SCIENCE_COMPASS,
+    SCIENCE_GEAR,
+    SCIENCE_TABLET,
+    COLOR_BLUE,
+    COLOR_BROWN,
+    COLOR_GRAY,
+    COLOR_GREEN,
+    COLOR_PURPLE,
+    COLOR_RED,
+    COLOR_YELLOW,
+};
 
 /// The CardRegistry produces the card for the games depending on the age and the number of players.
 #[derive(Debug, Clone)]
@@ -19,33 +35,32 @@ impl CardRegistry {
                 vec![
                     // ** THREE PLAYERS
                     // *** BROWN CARDS
-                    CardBuilder::new("Chantier", Resources([0, 1, 0, 0, 0, 0, 0])),
-                    CardBuilder::new("Cavité", Resources([0, 0, 0, 1, 0, 0, 0])),
-                    CardBuilder::new("Bassin argileux", Resources([1, 0, 0, 0, 0, 0, 0])),
-                    CardBuilder::new("Filon", Resources([0, 0, 1, 0, 0, 0, 0])),
-                    CardBuilder::new("Fosse argileuse", Resources([1, 0, 1, 0, 0, 0, 0])).with_cost_gold(1),
-                    CardBuilder::new("Exploitation forestière", Resources([0, 1, 0, 1, 0, 0, 0])).with_cost_gold(1),
+                    CardBuilder::new("Chantier", COLOR_BROWN, Resources([0, 1, 0, 0, 0, 0, 0])),
+                    CardBuilder::new("Cavité", COLOR_BROWN, Resources([0, 0, 0, 1, 0, 0, 0])),
+                    CardBuilder::new("Bassin argileux", COLOR_BROWN, Resources([1, 0, 0, 0, 0, 0, 0])),
+                    CardBuilder::new("Filon", COLOR_BROWN, Resources([0, 0, 1, 0, 0, 0, 0])),
+                    CardBuilder::new("Fosse argileuse", COLOR_BROWN, Resources([1, 0, 1, 0, 0, 0, 0])).with_cost_gold(1),
+                    CardBuilder::new("Exploitation forestière", COLOR_BROWN, Resources([0, 1, 0, 1, 0, 0, 0])).with_cost_gold(1),
                     // *** GRAY CARDS
-                    CardBuilder::new("Métier à tisser", Resources([0, 0, 0, 0, 0, 0, 1])),
-                    CardBuilder::new("Verrerie", Resources([0, 0, 0, 0, 1, 0, 0])),
-                    CardBuilder::new("Presse", Resources([0, 0, 0, 0, 0, 1, 0])),
+                    CardBuilder::new("Métier à tisser", COLOR_GRAY, Resources([0, 0, 0, 0, 0, 0, 1])),
+                    CardBuilder::new("Verrerie", COLOR_GRAY, Resources([0, 0, 0, 0, 1, 0, 0])),
+                    CardBuilder::new("Presse", COLOR_GRAY, Resources([0, 0, 0, 0, 0, 1, 0])),
                     // *** BLUE CARDS
-                    CardBuilder::new("Bains", Points(3)).with_cost_stone(1),
-                    CardBuilder::new("Autel", Points(2)),
-                    CardBuilder::new("Théâtre", Points(2)),
+                    CardBuilder::new("Bains", COLOR_BLUE, Points(3)).with_cost_stone(1),
+                    CardBuilder::new("Autel", COLOR_BLUE, Points(2)),
+                    CardBuilder::new("Théâtre", COLOR_BLUE, Points(2)),
                     // *** YELLOW CARDS
-                    CardBuilder::new("Comptoir est", RawMaterialsCost(RIGHT_PLAYER)),
-                    CardBuilder::new("Comptoir ouest", RawMaterialsCost(LEFT_PLAYER)),
-                    CardBuilder::new("Marché", ManufacturedProductsCost),
+                    CardBuilder::new("Comptoir est", COLOR_YELLOW, RawMaterialsCost(RIGHT_PLAYER)),
+                    CardBuilder::new("Comptoir ouest", COLOR_YELLOW, RawMaterialsCost(LEFT_PLAYER)),
+                    CardBuilder::new("Marché", COLOR_YELLOW, ManufacturedProductsCost),
                     // *** RED CARDS
-                    CardBuilder::new("Palissade", Shields(1)).with_cost_wood(1),
-                    CardBuilder::new("Caserne", Shields(1)).with_cost_ore(1),
-                    CardBuilder::new("Tour de garde", Shields(1)).with_cost_clay(1),
+                    CardBuilder::new("Palissade", COLOR_RED, Shields(1)).with_cost_wood(1),
+                    CardBuilder::new("Caserne", COLOR_RED, Shields(1)).with_cost_ore(1),
+                    CardBuilder::new("Tour de garde", COLOR_RED, Shields(1)).with_cost_clay(1),
                     // *** GREEN CARDS
-                    CardBuilder::new("Officine", Science(SCIENCE_COMPASS)).with_cost_loom(1),
-                    CardBuilder::new("Atelier", Science(SCIENCE_GEAR)).with_cost_glass(1),
-                    CardBuilder::new("Scriptorium", Science(SCIENCE_TABLET)).with_cost_papyrus(1),
-
+                    CardBuilder::new("Officine", COLOR_GREEN, Science(SCIENCE_COMPASS)).with_cost_loom(1),
+                    CardBuilder::new("Atelier", COLOR_GREEN, Science(SCIENCE_GEAR)).with_cost_glass(1),
+                    CardBuilder::new("Scriptorium", COLOR_GREEN, Science(SCIENCE_TABLET)).with_cost_papyrus(1),
                 ].into_iter().map(|cb| cb.build()).collect(),
                 vec![],
                 vec![],
@@ -59,9 +74,10 @@ struct CardBuilder {
 }
 
 impl CardBuilder {
-    pub fn new<S: ToString>(name: S, effect: CardEffect) -> CardBuilder {
+    pub fn new<S: ToString>(name: S, color: usize, effect: CardEffect) -> CardBuilder {
         Self {
             card: Card {
+                color,
                 name: name.to_string(),
                 gold_cost: 0,
                 resource_cost: [0; 7],

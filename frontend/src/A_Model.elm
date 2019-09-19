@@ -1,5 +1,9 @@
 module A_Model exposing (..)
 
+import Data.Font exposing (Font)
+import Data.TextureAtlas exposing (TextureAtlas)
+import WebGL.Texture exposing (Texture)
+
 type Model
   = InLobby LobbyModel
   | InGame GameModel
@@ -30,7 +34,9 @@ type alias NewGameData =
 -}
 
 type alias GameModel =
-  { gameName : String
+  { renderParameters : Maybe RenderParameters
+  , textures : Maybe Textures
+  , gameName : String
   , playerName : String
   , playerId : Int
   , playerHand : Maybe (List Card)
@@ -38,6 +44,16 @@ type alias GameModel =
   , playerCount : Int
   , connectedPlayers : List String
   , game : Maybe Game
+  }
+
+type alias RenderParameters =
+  { atlas : TextureAtlas
+  , font : Font
+  }
+
+type alias Textures =
+  { atlas : Texture
+  , text : Texture
   }
 
 type alias Game =
@@ -53,7 +69,8 @@ type alias PlayerData =
   }
 
 type alias Card =
-  { name : String
+  { color : CardColor
+  , name : String
   , goldCost : Int
   , resourceCost : ResourceArray
   , effect : CardEffect
@@ -61,7 +78,19 @@ type alias Card =
   , chainingSources : List String
   }
 
+type CardColor
+  = Blue
+  | Brown
+  | Gray
+  | Green
+  | Purple
+  | Red
+  | Yellow
+
 type alias ResourceArray = List Int
+
+emptyResourceArray : ResourceArray
+emptyResourceArray = List.repeat 7 0
 
 type CardEffect
   = Resources ResourceArray

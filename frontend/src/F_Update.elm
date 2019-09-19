@@ -1,12 +1,18 @@
 module F_Update exposing (update)
 
-import A_Model exposing (GameModel, LobbyModel, Model(..), Play(..))
+import A_Model exposing (GameModel, LobbyModel, Model(..), Play(..), RenderParameters, Textures)
 import B_Message exposing (Msg(..), NewGameMessage(..))
 import C_Data exposing (ConnectInfo, FromPlayer(..), ToPlayer(..))
 import Data.Decode exposing (decodeToPlayer)
 import Data.Encode exposing (encodeFromPlayer)
-import Json.Decode exposing (decodeString)
+import Data.Font as Font
+import Data.TextureAtlas as TextureAtlas
+import Http
+import Json.Decode as Decode exposing (decodeString)
 import ListUtil as L
+import Render.Image as Image
+import Render.Text as Text
+import Task
 import Websocket exposing (send)
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -31,7 +37,7 @@ update msg model =
               GameList list ->
                 ( InLobby { lobbyModel | games = list }, Cmd.none )
               ActiveGame playerInfo activeGameInfo ->
-                updateActiveGame playerInfo activeGameInfo
+                updateActiveGame Nothing Nothing playerInfo activeGameInfo <| Cmd.batch [ loadRenderParameters, loadTextures ]
         NewGame m ->
           handleNewGameMessage m lobbyModel
         NewPlayerName name ->
@@ -44,6 +50,10 @@ update msg model =
           )
         PerformAction a ->
           noUpdate
+        RenderParametersLoaded rp ->
+          noUpdate
+        TexturesLoaded t ->
+          noUpdate
 
     updateGame gameMsg gameModel =
       case gameMsg of
@@ -53,7 +63,7 @@ update msg model =
               GameList _ ->
                 noUpdate
               ActiveGame playerInfo activeGameInfo ->
-                updateActiveGame playerInfo activeGameInfo
+                updateActiveGame gameModel.renderParameters gameModel.textures playerInfo activeGameInfo Cmd.none
         NewGame _ ->
           noUpdate
         NewPlayerName _ ->
@@ -66,9 +76,16 @@ update msg model =
             |> encodeFromPlayer
             |> send
           )
-        
+        RenderParametersLoaded maybeRp ->
+          case maybeRp of
+            Just rp -> ( InGame { gameModel | renderParameters = Just rp }, Cmd.none )
+            Nothing -> noUpdate
+        TexturesLoaded maybeT ->
+          case maybeT of
+            Just t -> ( InGame { gameModel | textures = Just t }, Cmd.none )
+            Nothing -> noUpdate
 
-    updateActiveGame playerInfo activeGameInfo =
+    updateActiveGame renderParameters textures playerInfo activeGameInfo cmd =
       let
         playerId =
           activeGameInfo.connectedPlayers
@@ -76,7 +93,9 @@ update msg model =
           |> Maybe.withDefault -1
       in
         ( InGame
-          { gameName = activeGameInfo.name
+          { renderParameters = renderParameters
+          , textures = textures
+          , gameName = activeGameInfo.name
           , playerName = playerInfo.playerName
           , playerId = playerId
           , playerHand = playerInfo.cards
@@ -85,7 +104,7 @@ update msg model =
           , connectedPlayers = activeGameInfo.connectedPlayers
           , game = activeGameInfo.game
           }
-        , Cmd.none
+        , cmd
         )
   in
     case model of
@@ -121,3 +140,23 @@ handleNewGameMessage m lobbyModel =
           |> encodeFromPlayer
           |> send
         )
+
+renderParametersDecoder : Decode.Decoder RenderParameters
+renderParametersDecoder =
+  Decode.map2 RenderParameters
+    (Decode.field "textures" TextureAtlas.textureAtlasDecoder)
+    (Decode.field "font" Font.fontDecoder)
+
+loadRenderParameters : Cmd Msg
+loadRenderParameters =
+  Http.get
+    { url = "/data.json"
+    , expect = Http.expectJson (Result.toMaybe >> RenderParametersLoaded) renderParametersDecoder
+    }
+
+loadTextures : Cmd Msg
+loadTextures =
+  Task.map2 Textures
+    Image.loadTexture
+    Text.loadTexture
+  |> Task.attempt (Result.toMaybe >> TexturesLoaded)

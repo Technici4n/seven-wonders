@@ -1,4 +1,4 @@
-module Render.CardPart exposing (getBackground, getImage, getResourceCost, getResourceStripe, getText)
+module Render.CardPart exposing (background, eitherResource, image, resourceCost, resourceStripe, singleResource, text)
 
 import Font exposing (Font)
 import Math.Matrix4 as Mat4 exposing (Mat4)
@@ -6,14 +6,14 @@ import Math.Vector3 as Vec3 exposing (vec3, Vec3)
 import Math.Vector4 as Vec4 exposing (vec4, Vec4)
 import Render.Primitive as Primitive
 import Render.Text as Text exposing (Vertex)
-import Render.VertexList as VertexList exposing (VertexList)
+import Render.VertexList as VertexList exposing (PositionVertexList, VertexList)
 
 chainTransforms : List (Mat4 -> Mat4) -> Mat4
 chainTransforms =
   List.foldr (\t st -> t st) Mat4.identity
 
-getText : Font -> String -> VertexList Vertex
-getText font str =
+text : Font -> String -> VertexList Vertex
+text font str =
   let
     -- rotate text by 90 degrees counter-clockwise
     rotateText = Mat4.rotate (degrees 90) (vec3 0.0 0.0 1.0)
@@ -61,8 +61,9 @@ firstResourceOffset = vec3 ((cardWidth - imageWidth - resourceWidth) / 2) (cardH
 relativeResourceOffset : Vec3
 relativeResourceOffset = vec3 0.0 ( -1 * (resourceHeight + resourceSpacing) ) 0.0
 
-getBackground : Font -> Vec3 -> VertexList Vertex
-getBackground font color =
+-- Common card parts
+background : Font -> Vec3 -> VertexList Vertex
+background font color =
   let
     scaleToRectangle = Mat4.scale3 cardWidth cardHeight 1.0
     transformationMatrix = chainTransforms [ scaleToRectangle ]
@@ -70,8 +71,8 @@ getBackground font color =
     Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
-getImage : Font -> Vec3 -> VertexList Vertex
-getImage font color =
+image : Font -> Vec3 -> VertexList Vertex
+image font color =
   let
     scaleToRectangle = Mat4.scale3 imageWidth imageHeight 1
     translateToBottomRight = Mat4.translate imageOffset
@@ -80,8 +81,8 @@ getImage font color =
     Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
-getResourceStripe : Font -> Vec3 -> VertexList Vertex
-getResourceStripe font color =
+resourceStripe : Font -> Vec3 -> VertexList Vertex
+resourceStripe font color =
   let
     scaleToRectangle = Mat4.scale3 resourceStripeWidth resourceStripeHeight 1
     translate = Mat4.translate resourceStripeOffset
@@ -90,8 +91,8 @@ getResourceStripe font color =
     Primitive.square font color
     |> VertexList.transformPosition transformationMatrix
 
-getResourceCost : List (VertexList Vertex) -> VertexList Vertex
-getResourceCost polygons =
+resourceCost : List (VertexList Vertex) -> VertexList Vertex
+resourceCost polygons =
   let
     scale = Mat4.scale3 resourceWidth resourceHeight 1
     appendPolygon polygon (triangles, offset) =
@@ -106,3 +107,54 @@ getResourceCost polygons =
     polygons
     |> List.foldl appendPolygon ([], firstResourceOffset)
     |> Tuple.first
+
+-- Effects
+singleResourceSize : Float
+singleResourceSize = 0.1
+eitherResourceSpacing : Float
+eitherResourceSpacing = 0.06
+slashWidth = 0.25 * singleResourceSize
+-- Computed
+singleResourceOffset : Vec3
+singleResourceOffset = vec3 (cardWidth - imageWidth + (imageWidth - singleResourceSize) / 2) (imageHeight + (cardHeight - imageHeight - singleResourceSize) / 2) 0.001
+eitherResourceFirstOffset : Vec3
+eitherResourceFirstOffset = vec3 (cardWidth - imageWidth + (imageWidth - 2 * singleResourceSize - eitherResourceSpacing) / 2) (imageHeight + (cardHeight - imageHeight - singleResourceSize) / 2) 0.001
+eitherResourceSecondOffset : Vec3
+eitherResourceSecondOffset = Vec3.add eitherResourceFirstOffset <| vec3 (singleResourceSize + eitherResourceSpacing) 0.0 0.0
+eitherResourceSlashOffset : Vec3
+eitherResourceSlashOffset = vec3 (cardWidth - imageWidth + (imageWidth - slashWidth) / 2) (imageHeight + (cardHeight - imageHeight - singleResourceSize) / 2) 0.001
+
+singleResource : PositionVertexList a -> PositionVertexList a
+singleResource polygon =
+  polygon
+  |> VertexList.transformPosition
+    (chainTransforms
+      [ Mat4.scale3 singleResourceSize singleResourceSize 1.0
+      , Mat4.translate singleResourceOffset
+      ])
+
+eitherResource : PositionVertexList a -> PositionVertexList a -> PositionVertexList a -> PositionVertexList a
+eitherResource poly1 slash poly2 =
+  let
+    scale = Mat4.scale3 singleResourceSize singleResourceSize 1.0
+  in
+    List.concat
+      [ poly1
+        |> VertexList.transformPosition
+          (chainTransforms
+            [ scale
+            , Mat4.translate eitherResourceFirstOffset
+            ])
+      , slash
+        |> VertexList.transformPosition
+          (chainTransforms
+            [ scale
+            , Mat4.translate eitherResourceSlashOffset
+            ])
+      , poly2
+        |> VertexList.transformPosition
+          (chainTransforms
+            [ scale
+            , Mat4.translate eitherResourceSecondOffset
+            ])
+      ]

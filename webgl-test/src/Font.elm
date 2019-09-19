@@ -1,19 +1,12 @@
-module Font exposing (load, CharInfo, CommonInfo, Font)
+module Font exposing (fontDecoder, CharInfo, CommonInfo, Font)
 
 import Dict as Dict exposing (Dict)
 import Http
 import Json.Decode as Decode exposing (field, index, int, list, string, Decoder)
 
-load : (Result Http.Error Font -> msg) -> Cmd msg
-load readyMessage =
-  Http.get
-    { url = "/font.json"
-    , expect = Http.expectJson (Result.map buildLoadedFontInfo >> readyMessage) fontInfoDecoder
-    }
-
-getFontInfo : Font -> String -> Maybe CharInfo
-getFontInfo font string =
-  Dict.get string font.chars
+fontDecoder : Decoder Font
+fontDecoder =
+  Decode.map buildLoadedFontInfo fontInfoDecoder
 
 buildLoadedFontInfo : RawFontInfo -> Font
 buildLoadedFontInfo fontInfo =

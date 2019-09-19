@@ -2314,6 +2314,242 @@ function _Platform_mergeExportsDebug(moduleName, obj, exports)
 
 
 
+// SEND REQUEST
+
+var _Http_toTask = F3(function(router, toTask, request)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		function done(response) {
+			callback(toTask(request.expect.a(response)));
+		}
+
+		var xhr = new XMLHttpRequest();
+		xhr.addEventListener('error', function() { done(elm$http$Http$NetworkError_); });
+		xhr.addEventListener('timeout', function() { done(elm$http$Http$Timeout_); });
+		xhr.addEventListener('load', function() { done(_Http_toResponse(request.expect.b, xhr)); });
+		elm$core$Maybe$isJust(request.tracker) && _Http_track(router, xhr, request.tracker.a);
+
+		try {
+			xhr.open(request.method, request.url, true);
+		} catch (e) {
+			return done(elm$http$Http$BadUrl_(request.url));
+		}
+
+		_Http_configureRequest(xhr, request);
+
+		request.body.a && xhr.setRequestHeader('Content-Type', request.body.a);
+		xhr.send(request.body.b);
+
+		return function() { xhr.c = true; xhr.abort(); };
+	});
+});
+
+
+// CONFIGURE
+
+function _Http_configureRequest(xhr, request)
+{
+	for (var headers = request.headers; headers.b; headers = headers.b) // WHILE_CONS
+	{
+		xhr.setRequestHeader(headers.a.a, headers.a.b);
+	}
+	xhr.timeout = request.timeout.a || 0;
+	xhr.responseType = request.expect.d;
+	xhr.withCredentials = request.allowCookiesFromOtherDomains;
+}
+
+
+// RESPONSES
+
+function _Http_toResponse(toBody, xhr)
+{
+	return A2(
+		200 <= xhr.status && xhr.status < 300 ? elm$http$Http$GoodStatus_ : elm$http$Http$BadStatus_,
+		_Http_toMetadata(xhr),
+		toBody(xhr.response)
+	);
+}
+
+
+// METADATA
+
+function _Http_toMetadata(xhr)
+{
+	return {
+		url: xhr.responseURL,
+		statusCode: xhr.status,
+		statusText: xhr.statusText,
+		headers: _Http_parseHeaders(xhr.getAllResponseHeaders())
+	};
+}
+
+
+// HEADERS
+
+function _Http_parseHeaders(rawHeaders)
+{
+	if (!rawHeaders)
+	{
+		return elm$core$Dict$empty;
+	}
+
+	var headers = elm$core$Dict$empty;
+	var headerPairs = rawHeaders.split('\r\n');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf(': ');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3(elm$core$Dict$update, key, function(oldValue) {
+				return elm$core$Maybe$Just(elm$core$Maybe$isJust(oldValue)
+					? value + ', ' + oldValue.a
+					: value
+				);
+			}, headers);
+		}
+	}
+	return headers;
+}
+
+
+// EXPECT
+
+var _Http_expect = F3(function(type, toBody, toValue)
+{
+	return {
+		$: 0,
+		d: type,
+		b: toBody,
+		a: toValue
+	};
+});
+
+var _Http_mapExpect = F2(function(func, expect)
+{
+	return {
+		$: 0,
+		d: expect.d,
+		b: expect.b,
+		a: function(x) { return func(expect.a(x)); }
+	};
+});
+
+function _Http_toDataView(arrayBuffer)
+{
+	return new DataView(arrayBuffer);
+}
+
+
+// BODY and PARTS
+
+var _Http_emptyBody = { $: 0 };
+var _Http_pair = F2(function(a, b) { return { $: 0, a: a, b: b }; });
+
+function _Http_toFormData(parts)
+{
+	for (var formData = new FormData(); parts.b; parts = parts.b) // WHILE_CONS
+	{
+		var part = parts.a;
+		formData.append(part.a, part.b);
+	}
+	return formData;
+}
+
+var _Http_bytesToBlob = F2(function(mime, bytes)
+{
+	return new Blob([bytes], { type: mime });
+});
+
+
+// PROGRESS
+
+function _Http_track(router, xhr, tracker)
+{
+	// TODO check out lengthComputable on loadstart event
+
+	xhr.upload.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2(elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, elm$http$Http$Sending({
+			sent: event.loaded,
+			size: event.total
+		}))));
+	});
+	xhr.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2(elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, elm$http$Http$Receiving({
+			received: event.loaded,
+			size: event.lengthComputable ? elm$core$Maybe$Just(event.total) : elm$core$Maybe$Nothing
+		}))));
+	});
+}
+
+// eslint-disable-next-line no-unused-vars
+var _Texture_load = F6(function (magnify, mininify, horizontalWrap, verticalWrap, flipY, url) {
+  var isMipmap = mininify !== 9728 && mininify !== 9729;
+  return _Scheduler_binding(function (callback) {
+    var img = new Image();
+    function createTexture(gl) {
+      var texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, magnify);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mininify);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, horizontalWrap);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, verticalWrap);
+      if (isMipmap) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+      }
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      return texture;
+    }
+    img.onload = function () {
+      var width = img.width;
+      var height = img.height;
+      var widthPowerOfTwo = (width & (width - 1)) === 0;
+      var heightPowerOfTwo = (height & (height - 1)) === 0;
+      var isSizeValid = (widthPowerOfTwo && heightPowerOfTwo) || (
+        !isMipmap
+        && horizontalWrap === 33071 // clamp to edge
+        && verticalWrap === 33071
+      );
+      if (isSizeValid) {
+        callback(_Scheduler_succeed({
+          $: 0,
+          createTexture: createTexture,
+          a: width,
+          b: height
+        }));
+      } else {
+        callback(_Scheduler_fail(A2(
+          elm_explorations$webgl$WebGL$Texture$SizeError,
+          width,
+          height
+        )));
+      }
+    };
+    img.onerror = function () {
+      callback(_Scheduler_fail(elm_explorations$webgl$WebGL$Texture$LoadError));
+    };
+    if (url.slice(0, 5) !== 'data:') {
+      img.crossOrigin = 'Anonymous';
+    }
+    img.src = url;
+  });
+});
+
+// eslint-disable-next-line no-unused-vars
+var _Texture_size = function (texture) {
+  return _Utils_Tuple2(texture.a, texture.b);
+};
+
+
+
 var _Bitwise_and = F2(function(a, b)
 {
 	return a & b;
@@ -3908,6 +4144,1662 @@ function _VirtualDom_dekey(keyedNode)
 }
 
 
+/*
+ * Copyright (c) 2010 Mozilla Corporation
+ * Copyright (c) 2010 Vladimir Vukicevic
+ * Copyright (c) 2013 John Mayer
+ * Copyright (c) 2018 Andrey Kuzmin
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+// Vector2
+
+var _MJS_v2 = F2(function(x, y) {
+    return new Float64Array([x, y]);
+});
+
+var _MJS_v2getX = function(a) {
+    return a[0];
+};
+
+var _MJS_v2getY = function(a) {
+    return a[1];
+};
+
+var _MJS_v2setX = F2(function(x, a) {
+    return new Float64Array([x, a[1]]);
+});
+
+var _MJS_v2setY = F2(function(y, a) {
+    return new Float64Array([a[0], y]);
+});
+
+var _MJS_v2toRecord = function(a) {
+    return { x: a[0], y: a[1] };
+};
+
+var _MJS_v2fromRecord = function(r) {
+    return new Float64Array([r.x, r.y]);
+};
+
+var _MJS_v2add = F2(function(a, b) {
+    var r = new Float64Array(2);
+    r[0] = a[0] + b[0];
+    r[1] = a[1] + b[1];
+    return r;
+});
+
+var _MJS_v2sub = F2(function(a, b) {
+    var r = new Float64Array(2);
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    return r;
+});
+
+var _MJS_v2negate = function(a) {
+    var r = new Float64Array(2);
+    r[0] = -a[0];
+    r[1] = -a[1];
+    return r;
+};
+
+var _MJS_v2direction = F2(function(a, b) {
+    var r = new Float64Array(2);
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    var im = 1.0 / _MJS_v2lengthLocal(r);
+    r[0] = r[0] * im;
+    r[1] = r[1] * im;
+    return r;
+});
+
+function _MJS_v2lengthLocal(a) {
+    return Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+}
+var _MJS_v2length = _MJS_v2lengthLocal;
+
+var _MJS_v2lengthSquared = function(a) {
+    return a[0] * a[0] + a[1] * a[1];
+};
+
+var _MJS_v2distance = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    return Math.sqrt(dx * dx + dy * dy);
+});
+
+var _MJS_v2distanceSquared = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    return dx * dx + dy * dy;
+});
+
+var _MJS_v2normalize = function(a) {
+    var r = new Float64Array(2);
+    var im = 1.0 / _MJS_v2lengthLocal(a);
+    r[0] = a[0] * im;
+    r[1] = a[1] * im;
+    return r;
+};
+
+var _MJS_v2scale = F2(function(k, a) {
+    var r = new Float64Array(2);
+    r[0] = a[0] * k;
+    r[1] = a[1] * k;
+    return r;
+});
+
+var _MJS_v2dot = F2(function(a, b) {
+    return a[0] * b[0] + a[1] * b[1];
+});
+
+// Vector3
+
+var _MJS_v3temp1Local = new Float64Array(3);
+var _MJS_v3temp2Local = new Float64Array(3);
+var _MJS_v3temp3Local = new Float64Array(3);
+
+var _MJS_v3 = F3(function(x, y, z) {
+    return new Float64Array([x, y, z]);
+});
+
+var _MJS_v3getX = function(a) {
+    return a[0];
+};
+
+var _MJS_v3getY = function(a) {
+    return a[1];
+};
+
+var _MJS_v3getZ = function(a) {
+    return a[2];
+};
+
+var _MJS_v3setX = F2(function(x, a) {
+    return new Float64Array([x, a[1], a[2]]);
+});
+
+var _MJS_v3setY = F2(function(y, a) {
+    return new Float64Array([a[0], y, a[2]]);
+});
+
+var _MJS_v3setZ = F2(function(z, a) {
+    return new Float64Array([a[0], a[1], z]);
+});
+
+var _MJS_v3toRecord = function(a) {
+    return { x: a[0], y: a[1], z: a[2] };
+};
+
+var _MJS_v3fromRecord = function(r) {
+    return new Float64Array([r.x, r.y, r.z]);
+};
+
+var _MJS_v3add = F2(function(a, b) {
+    var r = new Float64Array(3);
+    r[0] = a[0] + b[0];
+    r[1] = a[1] + b[1];
+    r[2] = a[2] + b[2];
+    return r;
+});
+
+function _MJS_v3subLocal(a, b, r) {
+    if (r === undefined) {
+        r = new Float64Array(3);
+    }
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    r[2] = a[2] - b[2];
+    return r;
+}
+var _MJS_v3sub = F2(_MJS_v3subLocal);
+
+var _MJS_v3negate = function(a) {
+    var r = new Float64Array(3);
+    r[0] = -a[0];
+    r[1] = -a[1];
+    r[2] = -a[2];
+    return r;
+};
+
+function _MJS_v3directionLocal(a, b, r) {
+    if (r === undefined) {
+        r = new Float64Array(3);
+    }
+    return _MJS_v3normalizeLocal(_MJS_v3subLocal(a, b, r), r);
+}
+var _MJS_v3direction = F2(_MJS_v3directionLocal);
+
+function _MJS_v3lengthLocal(a) {
+    return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+}
+var _MJS_v3length = _MJS_v3lengthLocal;
+
+var _MJS_v3lengthSquared = function(a) {
+    return a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+};
+
+var _MJS_v3distance = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    var dz = a[2] - b[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+});
+
+var _MJS_v3distanceSquared = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    var dz = a[2] - b[2];
+    return dx * dx + dy * dy + dz * dz;
+});
+
+function _MJS_v3normalizeLocal(a, r) {
+    if (r === undefined) {
+        r = new Float64Array(3);
+    }
+    var im = 1.0 / _MJS_v3lengthLocal(a);
+    r[0] = a[0] * im;
+    r[1] = a[1] * im;
+    r[2] = a[2] * im;
+    return r;
+}
+var _MJS_v3normalize = _MJS_v3normalizeLocal;
+
+var _MJS_v3scale = F2(function(k, a) {
+    return new Float64Array([a[0] * k, a[1] * k, a[2] * k]);
+});
+
+var _MJS_v3dotLocal = function(a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+};
+var _MJS_v3dot = F2(_MJS_v3dotLocal);
+
+function _MJS_v3crossLocal(a, b, r) {
+    if (r === undefined) {
+        r = new Float64Array(3);
+    }
+    r[0] = a[1] * b[2] - a[2] * b[1];
+    r[1] = a[2] * b[0] - a[0] * b[2];
+    r[2] = a[0] * b[1] - a[1] * b[0];
+    return r;
+}
+var _MJS_v3cross = F2(_MJS_v3crossLocal);
+
+var _MJS_v3mul4x4 = F2(function(m, v) {
+    var w;
+    var tmp = _MJS_v3temp1Local;
+    var r = new Float64Array(3);
+
+    tmp[0] = m[3];
+    tmp[1] = m[7];
+    tmp[2] = m[11];
+    w = _MJS_v3dotLocal(v, tmp) + m[15];
+    tmp[0] = m[0];
+    tmp[1] = m[4];
+    tmp[2] = m[8];
+    r[0] = (_MJS_v3dotLocal(v, tmp) + m[12]) / w;
+    tmp[0] = m[1];
+    tmp[1] = m[5];
+    tmp[2] = m[9];
+    r[1] = (_MJS_v3dotLocal(v, tmp) + m[13]) / w;
+    tmp[0] = m[2];
+    tmp[1] = m[6];
+    tmp[2] = m[10];
+    r[2] = (_MJS_v3dotLocal(v, tmp) + m[14]) / w;
+    return r;
+});
+
+// Vector4
+
+var _MJS_v4 = F4(function(x, y, z, w) {
+    return new Float64Array([x, y, z, w]);
+});
+
+var _MJS_v4getX = function(a) {
+    return a[0];
+};
+
+var _MJS_v4getY = function(a) {
+    return a[1];
+};
+
+var _MJS_v4getZ = function(a) {
+    return a[2];
+};
+
+var _MJS_v4getW = function(a) {
+    return a[3];
+};
+
+var _MJS_v4setX = F2(function(x, a) {
+    return new Float64Array([x, a[1], a[2], a[3]]);
+});
+
+var _MJS_v4setY = F2(function(y, a) {
+    return new Float64Array([a[0], y, a[2], a[3]]);
+});
+
+var _MJS_v4setZ = F2(function(z, a) {
+    return new Float64Array([a[0], a[1], z, a[3]]);
+});
+
+var _MJS_v4setW = F2(function(w, a) {
+    return new Float64Array([a[0], a[1], a[2], w]);
+});
+
+var _MJS_v4toRecord = function(a) {
+    return { x: a[0], y: a[1], z: a[2], w: a[3] };
+};
+
+var _MJS_v4fromRecord = function(r) {
+    return new Float64Array([r.x, r.y, r.z, r.w]);
+};
+
+var _MJS_v4add = F2(function(a, b) {
+    var r = new Float64Array(4);
+    r[0] = a[0] + b[0];
+    r[1] = a[1] + b[1];
+    r[2] = a[2] + b[2];
+    r[3] = a[3] + b[3];
+    return r;
+});
+
+var _MJS_v4sub = F2(function(a, b) {
+    var r = new Float64Array(4);
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    r[2] = a[2] - b[2];
+    r[3] = a[3] - b[3];
+    return r;
+});
+
+var _MJS_v4negate = function(a) {
+    var r = new Float64Array(4);
+    r[0] = -a[0];
+    r[1] = -a[1];
+    r[2] = -a[2];
+    r[3] = -a[3];
+    return r;
+};
+
+var _MJS_v4direction = F2(function(a, b) {
+    var r = new Float64Array(4);
+    r[0] = a[0] - b[0];
+    r[1] = a[1] - b[1];
+    r[2] = a[2] - b[2];
+    r[3] = a[3] - b[3];
+    var im = 1.0 / _MJS_v4lengthLocal(r);
+    r[0] = r[0] * im;
+    r[1] = r[1] * im;
+    r[2] = r[2] * im;
+    r[3] = r[3] * im;
+    return r;
+});
+
+function _MJS_v4lengthLocal(a) {
+    return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]);
+}
+var _MJS_v4length = _MJS_v4lengthLocal;
+
+var _MJS_v4lengthSquared = function(a) {
+    return a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3];
+};
+
+var _MJS_v4distance = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    var dz = a[2] - b[2];
+    var dw = a[3] - b[3];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz + dw * dw);
+});
+
+var _MJS_v4distanceSquared = F2(function(a, b) {
+    var dx = a[0] - b[0];
+    var dy = a[1] - b[1];
+    var dz = a[2] - b[2];
+    var dw = a[3] - b[3];
+    return dx * dx + dy * dy + dz * dz + dw * dw;
+});
+
+var _MJS_v4normalize = function(a) {
+    var r = new Float64Array(4);
+    var im = 1.0 / _MJS_v4lengthLocal(a);
+    r[0] = a[0] * im;
+    r[1] = a[1] * im;
+    r[2] = a[2] * im;
+    r[3] = a[3] * im;
+    return r;
+};
+
+var _MJS_v4scale = F2(function(k, a) {
+    var r = new Float64Array(4);
+    r[0] = a[0] * k;
+    r[1] = a[1] * k;
+    r[2] = a[2] * k;
+    r[3] = a[3] * k;
+    return r;
+});
+
+var _MJS_v4dot = F2(function(a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+});
+
+// Matrix4
+
+var _MJS_m4x4temp1Local = new Float64Array(16);
+var _MJS_m4x4temp2Local = new Float64Array(16);
+
+var _MJS_m4x4identity = new Float64Array([
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+]);
+
+var _MJS_m4x4fromRecord = function(r) {
+    var m = new Float64Array(16);
+    m[0] = r.m11;
+    m[1] = r.m21;
+    m[2] = r.m31;
+    m[3] = r.m41;
+    m[4] = r.m12;
+    m[5] = r.m22;
+    m[6] = r.m32;
+    m[7] = r.m42;
+    m[8] = r.m13;
+    m[9] = r.m23;
+    m[10] = r.m33;
+    m[11] = r.m43;
+    m[12] = r.m14;
+    m[13] = r.m24;
+    m[14] = r.m34;
+    m[15] = r.m44;
+    return m;
+};
+
+var _MJS_m4x4toRecord = function(m) {
+    return {
+        m11: m[0], m21: m[1], m31: m[2], m41: m[3],
+        m12: m[4], m22: m[5], m32: m[6], m42: m[7],
+        m13: m[8], m23: m[9], m33: m[10], m43: m[11],
+        m14: m[12], m24: m[13], m34: m[14], m44: m[15]
+    };
+};
+
+var _MJS_m4x4inverse = function(m) {
+    var r = new Float64Array(16);
+
+    r[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] +
+        m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+    r[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] -
+        m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+    r[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] +
+        m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+    r[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] -
+        m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+    r[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] -
+        m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+    r[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] +
+        m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+    r[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] -
+        m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+    r[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] +
+        m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+    r[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] +
+        m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+    r[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] -
+        m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+    r[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] +
+        m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+    r[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] -
+        m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+    r[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] -
+        m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+    r[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] +
+        m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+    r[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] -
+        m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+    r[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] +
+        m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+
+    var det = m[0] * r[0] + m[1] * r[4] + m[2] * r[8] + m[3] * r[12];
+
+    if (det === 0) {
+        return elm$core$Maybe$Nothing;
+    }
+
+    det = 1.0 / det;
+
+    for (var i = 0; i < 16; i = i + 1) {
+        r[i] = r[i] * det;
+    }
+
+    return elm$core$Maybe$Just(r);
+};
+
+var _MJS_m4x4inverseOrthonormal = function(m) {
+    var r = _MJS_m4x4transposeLocal(m);
+    var t = [m[12], m[13], m[14]];
+    r[3] = r[7] = r[11] = 0;
+    r[12] = -_MJS_v3dotLocal([r[0], r[4], r[8]], t);
+    r[13] = -_MJS_v3dotLocal([r[1], r[5], r[9]], t);
+    r[14] = -_MJS_v3dotLocal([r[2], r[6], r[10]], t);
+    return r;
+};
+
+function _MJS_m4x4makeFrustumLocal(left, right, bottom, top, znear, zfar) {
+    var r = new Float64Array(16);
+
+    r[0] = 2 * znear / (right - left);
+    r[1] = 0;
+    r[2] = 0;
+    r[3] = 0;
+    r[4] = 0;
+    r[5] = 2 * znear / (top - bottom);
+    r[6] = 0;
+    r[7] = 0;
+    r[8] = (right + left) / (right - left);
+    r[9] = (top + bottom) / (top - bottom);
+    r[10] = -(zfar + znear) / (zfar - znear);
+    r[11] = -1;
+    r[12] = 0;
+    r[13] = 0;
+    r[14] = -2 * zfar * znear / (zfar - znear);
+    r[15] = 0;
+
+    return r;
+}
+var _MJS_m4x4makeFrustum = F6(_MJS_m4x4makeFrustumLocal);
+
+var _MJS_m4x4makePerspective = F4(function(fovy, aspect, znear, zfar) {
+    var ymax = znear * Math.tan(fovy * Math.PI / 360.0);
+    var ymin = -ymax;
+    var xmin = ymin * aspect;
+    var xmax = ymax * aspect;
+
+    return _MJS_m4x4makeFrustumLocal(xmin, xmax, ymin, ymax, znear, zfar);
+});
+
+function _MJS_m4x4makeOrthoLocal(left, right, bottom, top, znear, zfar) {
+    var r = new Float64Array(16);
+
+    r[0] = 2 / (right - left);
+    r[1] = 0;
+    r[2] = 0;
+    r[3] = 0;
+    r[4] = 0;
+    r[5] = 2 / (top - bottom);
+    r[6] = 0;
+    r[7] = 0;
+    r[8] = 0;
+    r[9] = 0;
+    r[10] = -2 / (zfar - znear);
+    r[11] = 0;
+    r[12] = -(right + left) / (right - left);
+    r[13] = -(top + bottom) / (top - bottom);
+    r[14] = -(zfar + znear) / (zfar - znear);
+    r[15] = 1;
+
+    return r;
+}
+var _MJS_m4x4makeOrtho = F6(_MJS_m4x4makeOrthoLocal);
+
+var _MJS_m4x4makeOrtho2D = F4(function(left, right, bottom, top) {
+    return _MJS_m4x4makeOrthoLocal(left, right, bottom, top, -1, 1);
+});
+
+function _MJS_m4x4mulLocal(a, b) {
+    var r = new Float64Array(16);
+    var a11 = a[0];
+    var a21 = a[1];
+    var a31 = a[2];
+    var a41 = a[3];
+    var a12 = a[4];
+    var a22 = a[5];
+    var a32 = a[6];
+    var a42 = a[7];
+    var a13 = a[8];
+    var a23 = a[9];
+    var a33 = a[10];
+    var a43 = a[11];
+    var a14 = a[12];
+    var a24 = a[13];
+    var a34 = a[14];
+    var a44 = a[15];
+    var b11 = b[0];
+    var b21 = b[1];
+    var b31 = b[2];
+    var b41 = b[3];
+    var b12 = b[4];
+    var b22 = b[5];
+    var b32 = b[6];
+    var b42 = b[7];
+    var b13 = b[8];
+    var b23 = b[9];
+    var b33 = b[10];
+    var b43 = b[11];
+    var b14 = b[12];
+    var b24 = b[13];
+    var b34 = b[14];
+    var b44 = b[15];
+
+    r[0] = a11 * b11 + a12 * b21 + a13 * b31 + a14 * b41;
+    r[1] = a21 * b11 + a22 * b21 + a23 * b31 + a24 * b41;
+    r[2] = a31 * b11 + a32 * b21 + a33 * b31 + a34 * b41;
+    r[3] = a41 * b11 + a42 * b21 + a43 * b31 + a44 * b41;
+    r[4] = a11 * b12 + a12 * b22 + a13 * b32 + a14 * b42;
+    r[5] = a21 * b12 + a22 * b22 + a23 * b32 + a24 * b42;
+    r[6] = a31 * b12 + a32 * b22 + a33 * b32 + a34 * b42;
+    r[7] = a41 * b12 + a42 * b22 + a43 * b32 + a44 * b42;
+    r[8] = a11 * b13 + a12 * b23 + a13 * b33 + a14 * b43;
+    r[9] = a21 * b13 + a22 * b23 + a23 * b33 + a24 * b43;
+    r[10] = a31 * b13 + a32 * b23 + a33 * b33 + a34 * b43;
+    r[11] = a41 * b13 + a42 * b23 + a43 * b33 + a44 * b43;
+    r[12] = a11 * b14 + a12 * b24 + a13 * b34 + a14 * b44;
+    r[13] = a21 * b14 + a22 * b24 + a23 * b34 + a24 * b44;
+    r[14] = a31 * b14 + a32 * b24 + a33 * b34 + a34 * b44;
+    r[15] = a41 * b14 + a42 * b24 + a43 * b34 + a44 * b44;
+
+    return r;
+}
+var _MJS_m4x4mul = F2(_MJS_m4x4mulLocal);
+
+var _MJS_m4x4mulAffine = F2(function(a, b) {
+    var r = new Float64Array(16);
+    var a11 = a[0];
+    var a21 = a[1];
+    var a31 = a[2];
+    var a12 = a[4];
+    var a22 = a[5];
+    var a32 = a[6];
+    var a13 = a[8];
+    var a23 = a[9];
+    var a33 = a[10];
+    var a14 = a[12];
+    var a24 = a[13];
+    var a34 = a[14];
+
+    var b11 = b[0];
+    var b21 = b[1];
+    var b31 = b[2];
+    var b12 = b[4];
+    var b22 = b[5];
+    var b32 = b[6];
+    var b13 = b[8];
+    var b23 = b[9];
+    var b33 = b[10];
+    var b14 = b[12];
+    var b24 = b[13];
+    var b34 = b[14];
+
+    r[0] = a11 * b11 + a12 * b21 + a13 * b31;
+    r[1] = a21 * b11 + a22 * b21 + a23 * b31;
+    r[2] = a31 * b11 + a32 * b21 + a33 * b31;
+    r[3] = 0;
+    r[4] = a11 * b12 + a12 * b22 + a13 * b32;
+    r[5] = a21 * b12 + a22 * b22 + a23 * b32;
+    r[6] = a31 * b12 + a32 * b22 + a33 * b32;
+    r[7] = 0;
+    r[8] = a11 * b13 + a12 * b23 + a13 * b33;
+    r[9] = a21 * b13 + a22 * b23 + a23 * b33;
+    r[10] = a31 * b13 + a32 * b23 + a33 * b33;
+    r[11] = 0;
+    r[12] = a11 * b14 + a12 * b24 + a13 * b34 + a14;
+    r[13] = a21 * b14 + a22 * b24 + a23 * b34 + a24;
+    r[14] = a31 * b14 + a32 * b24 + a33 * b34 + a34;
+    r[15] = 1;
+
+    return r;
+});
+
+var _MJS_m4x4makeRotate = F2(function(angle, axis) {
+    var r = new Float64Array(16);
+    axis = _MJS_v3normalizeLocal(axis, _MJS_v3temp1Local);
+    var x = axis[0];
+    var y = axis[1];
+    var z = axis[2];
+    var c = Math.cos(angle);
+    var c1 = 1 - c;
+    var s = Math.sin(angle);
+
+    r[0] = x * x * c1 + c;
+    r[1] = y * x * c1 + z * s;
+    r[2] = z * x * c1 - y * s;
+    r[3] = 0;
+    r[4] = x * y * c1 - z * s;
+    r[5] = y * y * c1 + c;
+    r[6] = y * z * c1 + x * s;
+    r[7] = 0;
+    r[8] = x * z * c1 + y * s;
+    r[9] = y * z * c1 - x * s;
+    r[10] = z * z * c1 + c;
+    r[11] = 0;
+    r[12] = 0;
+    r[13] = 0;
+    r[14] = 0;
+    r[15] = 1;
+
+    return r;
+});
+
+var _MJS_m4x4rotate = F3(function(angle, axis, m) {
+    var r = new Float64Array(16);
+    var im = 1.0 / _MJS_v3lengthLocal(axis);
+    var x = axis[0] * im;
+    var y = axis[1] * im;
+    var z = axis[2] * im;
+    var c = Math.cos(angle);
+    var c1 = 1 - c;
+    var s = Math.sin(angle);
+    var xs = x * s;
+    var ys = y * s;
+    var zs = z * s;
+    var xyc1 = x * y * c1;
+    var xzc1 = x * z * c1;
+    var yzc1 = y * z * c1;
+    var t11 = x * x * c1 + c;
+    var t21 = xyc1 + zs;
+    var t31 = xzc1 - ys;
+    var t12 = xyc1 - zs;
+    var t22 = y * y * c1 + c;
+    var t32 = yzc1 + xs;
+    var t13 = xzc1 + ys;
+    var t23 = yzc1 - xs;
+    var t33 = z * z * c1 + c;
+    var m11 = m[0], m21 = m[1], m31 = m[2], m41 = m[3];
+    var m12 = m[4], m22 = m[5], m32 = m[6], m42 = m[7];
+    var m13 = m[8], m23 = m[9], m33 = m[10], m43 = m[11];
+    var m14 = m[12], m24 = m[13], m34 = m[14], m44 = m[15];
+
+    r[0] = m11 * t11 + m12 * t21 + m13 * t31;
+    r[1] = m21 * t11 + m22 * t21 + m23 * t31;
+    r[2] = m31 * t11 + m32 * t21 + m33 * t31;
+    r[3] = m41 * t11 + m42 * t21 + m43 * t31;
+    r[4] = m11 * t12 + m12 * t22 + m13 * t32;
+    r[5] = m21 * t12 + m22 * t22 + m23 * t32;
+    r[6] = m31 * t12 + m32 * t22 + m33 * t32;
+    r[7] = m41 * t12 + m42 * t22 + m43 * t32;
+    r[8] = m11 * t13 + m12 * t23 + m13 * t33;
+    r[9] = m21 * t13 + m22 * t23 + m23 * t33;
+    r[10] = m31 * t13 + m32 * t23 + m33 * t33;
+    r[11] = m41 * t13 + m42 * t23 + m43 * t33;
+    r[12] = m14,
+    r[13] = m24;
+    r[14] = m34;
+    r[15] = m44;
+
+    return r;
+});
+
+function _MJS_m4x4makeScale3Local(x, y, z) {
+    var r = new Float64Array(16);
+
+    r[0] = x;
+    r[1] = 0;
+    r[2] = 0;
+    r[3] = 0;
+    r[4] = 0;
+    r[5] = y;
+    r[6] = 0;
+    r[7] = 0;
+    r[8] = 0;
+    r[9] = 0;
+    r[10] = z;
+    r[11] = 0;
+    r[12] = 0;
+    r[13] = 0;
+    r[14] = 0;
+    r[15] = 1;
+
+    return r;
+}
+var _MJS_m4x4makeScale3 = F3(_MJS_m4x4makeScale3Local);
+
+var _MJS_m4x4makeScale = function(v) {
+    return _MJS_m4x4makeScale3Local(v[0], v[1], v[2]);
+};
+
+var _MJS_m4x4scale3 = F4(function(x, y, z, m) {
+    var r = new Float64Array(16);
+
+    r[0] = m[0] * x;
+    r[1] = m[1] * x;
+    r[2] = m[2] * x;
+    r[3] = m[3] * x;
+    r[4] = m[4] * y;
+    r[5] = m[5] * y;
+    r[6] = m[6] * y;
+    r[7] = m[7] * y;
+    r[8] = m[8] * z;
+    r[9] = m[9] * z;
+    r[10] = m[10] * z;
+    r[11] = m[11] * z;
+    r[12] = m[12];
+    r[13] = m[13];
+    r[14] = m[14];
+    r[15] = m[15];
+
+    return r;
+});
+
+var _MJS_m4x4scale = F2(function(v, m) {
+    var r = new Float64Array(16);
+    var x = v[0];
+    var y = v[1];
+    var z = v[2];
+
+    r[0] = m[0] * x;
+    r[1] = m[1] * x;
+    r[2] = m[2] * x;
+    r[3] = m[3] * x;
+    r[4] = m[4] * y;
+    r[5] = m[5] * y;
+    r[6] = m[6] * y;
+    r[7] = m[7] * y;
+    r[8] = m[8] * z;
+    r[9] = m[9] * z;
+    r[10] = m[10] * z;
+    r[11] = m[11] * z;
+    r[12] = m[12];
+    r[13] = m[13];
+    r[14] = m[14];
+    r[15] = m[15];
+
+    return r;
+});
+
+function _MJS_m4x4makeTranslate3Local(x, y, z) {
+    var r = new Float64Array(16);
+
+    r[0] = 1;
+    r[1] = 0;
+    r[2] = 0;
+    r[3] = 0;
+    r[4] = 0;
+    r[5] = 1;
+    r[6] = 0;
+    r[7] = 0;
+    r[8] = 0;
+    r[9] = 0;
+    r[10] = 1;
+    r[11] = 0;
+    r[12] = x;
+    r[13] = y;
+    r[14] = z;
+    r[15] = 1;
+
+    return r;
+}
+var _MJS_m4x4makeTranslate3 = F3(_MJS_m4x4makeTranslate3Local);
+
+var _MJS_m4x4makeTranslate = function(v) {
+    return _MJS_m4x4makeTranslate3Local(v[0], v[1], v[2]);
+};
+
+var _MJS_m4x4translate3 = F4(function(x, y, z, m) {
+    var r = new Float64Array(16);
+    var m11 = m[0];
+    var m21 = m[1];
+    var m31 = m[2];
+    var m41 = m[3];
+    var m12 = m[4];
+    var m22 = m[5];
+    var m32 = m[6];
+    var m42 = m[7];
+    var m13 = m[8];
+    var m23 = m[9];
+    var m33 = m[10];
+    var m43 = m[11];
+
+    r[0] = m11;
+    r[1] = m21;
+    r[2] = m31;
+    r[3] = m41;
+    r[4] = m12;
+    r[5] = m22;
+    r[6] = m32;
+    r[7] = m42;
+    r[8] = m13;
+    r[9] = m23;
+    r[10] = m33;
+    r[11] = m43;
+    r[12] = m11 * x + m12 * y + m13 * z + m[12];
+    r[13] = m21 * x + m22 * y + m23 * z + m[13];
+    r[14] = m31 * x + m32 * y + m33 * z + m[14];
+    r[15] = m41 * x + m42 * y + m43 * z + m[15];
+
+    return r;
+});
+
+var _MJS_m4x4translate = F2(function(v, m) {
+    var r = new Float64Array(16);
+    var x = v[0];
+    var y = v[1];
+    var z = v[2];
+    var m11 = m[0];
+    var m21 = m[1];
+    var m31 = m[2];
+    var m41 = m[3];
+    var m12 = m[4];
+    var m22 = m[5];
+    var m32 = m[6];
+    var m42 = m[7];
+    var m13 = m[8];
+    var m23 = m[9];
+    var m33 = m[10];
+    var m43 = m[11];
+
+    r[0] = m11;
+    r[1] = m21;
+    r[2] = m31;
+    r[3] = m41;
+    r[4] = m12;
+    r[5] = m22;
+    r[6] = m32;
+    r[7] = m42;
+    r[8] = m13;
+    r[9] = m23;
+    r[10] = m33;
+    r[11] = m43;
+    r[12] = m11 * x + m12 * y + m13 * z + m[12];
+    r[13] = m21 * x + m22 * y + m23 * z + m[13];
+    r[14] = m31 * x + m32 * y + m33 * z + m[14];
+    r[15] = m41 * x + m42 * y + m43 * z + m[15];
+
+    return r;
+});
+
+var _MJS_m4x4makeLookAt = F3(function(eye, center, up) {
+    var z = _MJS_v3directionLocal(eye, center, _MJS_v3temp1Local);
+    var x = _MJS_v3normalizeLocal(_MJS_v3crossLocal(up, z, _MJS_v3temp2Local), _MJS_v3temp2Local);
+    var y = _MJS_v3normalizeLocal(_MJS_v3crossLocal(z, x, _MJS_v3temp3Local), _MJS_v3temp3Local);
+    var tm1 = _MJS_m4x4temp1Local;
+    var tm2 = _MJS_m4x4temp2Local;
+
+    tm1[0] = x[0];
+    tm1[1] = y[0];
+    tm1[2] = z[0];
+    tm1[3] = 0;
+    tm1[4] = x[1];
+    tm1[5] = y[1];
+    tm1[6] = z[1];
+    tm1[7] = 0;
+    tm1[8] = x[2];
+    tm1[9] = y[2];
+    tm1[10] = z[2];
+    tm1[11] = 0;
+    tm1[12] = 0;
+    tm1[13] = 0;
+    tm1[14] = 0;
+    tm1[15] = 1;
+
+    tm2[0] = 1; tm2[1] = 0; tm2[2] = 0; tm2[3] = 0;
+    tm2[4] = 0; tm2[5] = 1; tm2[6] = 0; tm2[7] = 0;
+    tm2[8] = 0; tm2[9] = 0; tm2[10] = 1; tm2[11] = 0;
+    tm2[12] = -eye[0]; tm2[13] = -eye[1]; tm2[14] = -eye[2]; tm2[15] = 1;
+
+    return _MJS_m4x4mulLocal(tm1, tm2);
+});
+
+
+function _MJS_m4x4transposeLocal(m) {
+    var r = new Float64Array(16);
+
+    r[0] = m[0]; r[1] = m[4]; r[2] = m[8]; r[3] = m[12];
+    r[4] = m[1]; r[5] = m[5]; r[6] = m[9]; r[7] = m[13];
+    r[8] = m[2]; r[9] = m[6]; r[10] = m[10]; r[11] = m[14];
+    r[12] = m[3]; r[13] = m[7]; r[14] = m[11]; r[15] = m[15];
+
+    return r;
+}
+var _MJS_m4x4transpose = _MJS_m4x4transposeLocal;
+
+var _MJS_m4x4makeBasis = F3(function(vx, vy, vz) {
+    var r = new Float64Array(16);
+
+    r[0] = vx[0];
+    r[1] = vx[1];
+    r[2] = vx[2];
+    r[3] = 0;
+    r[4] = vy[0];
+    r[5] = vy[1];
+    r[6] = vy[2];
+    r[7] = 0;
+    r[8] = vz[0];
+    r[9] = vz[1];
+    r[10] = vz[2];
+    r[11] = 0;
+    r[12] = 0;
+    r[13] = 0;
+    r[14] = 0;
+    r[15] = 1;
+
+    return r;
+});
+
+
+function _WebGL_log(/* msg */) {
+  // console.log(msg);
+}
+
+var _WebGL_guid = 0;
+
+function _WebGL_listEach(fn, list) {
+  for (; list.b; list = list.b) {
+    fn(list.a);
+  }
+}
+
+function _WebGL_listLength(list) {
+  var length = 0;
+  for (; list.b; list = list.b) {
+    length++;
+  }
+  return length;
+}
+
+var _WebGL_rAF = typeof requestAnimationFrame !== 'undefined' ?
+  requestAnimationFrame :
+  function (cb) { setTimeout(cb, 1000 / 60); };
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_entity = F5(function (settings, vert, frag, mesh, uniforms) {
+  return {
+    $: 0,
+    a: settings,
+    b: vert,
+    c: frag,
+    d: mesh,
+    e: uniforms
+  };
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableBlend = F2(function (gl, setting) {
+  gl.enable(gl.BLEND);
+  // a   b   c   d   e   f   g h i j
+  // eq1 f11 f12 eq2 f21 f22 r g b a
+  gl.blendEquationSeparate(setting.a, setting.d);
+  gl.blendFuncSeparate(setting.b, setting.c, setting.e, setting.f);
+  gl.blendColor(setting.g, setting.h, setting.i, setting.j);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableDepthTest = F2(function (gl, setting) {
+  gl.enable(gl.DEPTH_TEST);
+  // a    b    c    d
+  // func mask near far
+  gl.depthFunc(setting.a);
+  gl.depthMask(setting.b);
+  gl.depthRange(setting.c, setting.d);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableStencilTest = F2(function (gl, setting) {
+  gl.enable(gl.STENCIL_TEST);
+  // a   b    c         d     e     f      g      h     i     j      k
+  // ref mask writeMask test1 fail1 zfail1 zpass1 test2 fail2 zfail2 zpass2
+  gl.stencilFuncSeparate(gl.FRONT, setting.d, setting.a, setting.b);
+  gl.stencilOpSeparate(gl.FRONT, setting.e, setting.f, setting.g);
+  gl.stencilMaskSeparate(gl.FRONT, setting.c);
+  gl.stencilFuncSeparate(gl.BACK, setting.h, setting.a, setting.b);
+  gl.stencilOpSeparate(gl.BACK, setting.i, setting.j, setting.k);
+  gl.stencilMaskSeparate(gl.BACK, setting.c);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableScissor = F2(function (gl, setting) {
+  gl.enable(gl.SCISSOR_TEST);
+  gl.scissor(setting.a, setting.b, setting.c, setting.d);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableColorMask = F2(function (gl, setting) {
+  gl.colorMask(setting.a, setting.b, setting.c, setting.d);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableCullFace = F2(function (gl, setting) {
+  gl.enable(gl.CULL_FACE);
+  gl.cullFace(setting.a);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enablePolygonOffset = F2(function (gl, setting) {
+  gl.enable(gl.POLYGON_OFFSET_FILL);
+  gl.polygonOffset(setting.a, setting.b);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableSampleCoverage = F2(function (gl, setting) {
+  gl.enable(gl.SAMPLE_COVERAGE);
+  gl.sampleCoverage(setting.a, setting.b);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableSampleAlphaToCoverage = F2(function (gl, setting) {
+  gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableBlend = function (cache) {
+  cache.gl.disable(cache.gl.BLEND);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableDepthTest = function (cache) {
+  cache.gl.disable(cache.gl.DEPTH_TEST);
+  cache.gl.depthMask(true);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableStencilTest = function (cache) {
+  cache.gl.disable(cache.gl.STENCIL_TEST);
+  cache.gl.stencilMask(cache.STENCIL_WRITEMASK);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableScissor = function (cache) {
+  cache.gl.disable(cache.gl.SCISSOR_TEST);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableColorMask = function (cache) {
+  cache.gl.colorMask(true, true, true, true);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableCullFace = function (cache) {
+  cache.gl.disable(cache.gl.CULL_FACE);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disablePolygonOffset = function (cache) {
+  cache.gl.disable(cache.gl.POLYGON_OFFSET_FILL);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableSampleCoverage = function (cache) {
+  cache.gl.disable(cache.gl.SAMPLE_COVERAGE);
+};
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_disableSampleAlphaToCoverage = function (cache) {
+  cache.gl.disable(cache.gl.SAMPLE_ALPHA_TO_COVERAGE);
+};
+
+function _WebGL_doCompile(gl, src, type) {
+
+  var shader = gl.createShader(type);
+  _WebGL_log('Created shader');
+
+  gl.shaderSource(shader, src);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw gl.getShaderInfoLog(shader);
+  }
+
+  return shader;
+
+}
+
+function _WebGL_doLink(gl, vshader, fshader) {
+
+  var program = gl.createProgram();
+  _WebGL_log('Created program');
+
+  gl.attachShader(program, vshader);
+  gl.attachShader(program, fshader);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw gl.getProgramInfoLog(program);
+  }
+
+  return program;
+
+}
+
+function _WebGL_getAttributeInfo(gl, type) {
+  switch (type) {
+    case gl.FLOAT:
+      return { size: 1, arraySize: 1, type: Float32Array, baseType: gl.FLOAT };
+    case gl.FLOAT_VEC2:
+      return { size: 2, arraySize: 1, type: Float32Array, baseType: gl.FLOAT };
+    case gl.FLOAT_VEC3:
+      return { size: 3, arraySize: 1, type: Float32Array, baseType: gl.FLOAT };
+    case gl.FLOAT_VEC4:
+      return { size: 4, arraySize: 1, type: Float32Array, baseType: gl.FLOAT };
+    case gl.FLOAT_MAT4:
+      return { size: 4, arraySize: 4, type: Float32Array, baseType: gl.FLOAT };
+    case gl.INT:
+      return { size: 1, arraySize: 1, type: Int32Array, baseType: gl.INT };
+  }
+}
+
+/**
+ *  Form the buffer for a given attribute.
+ *
+ *  @param {WebGLRenderingContext} gl context
+ *  @param {WebGLActiveInfo} attribute the attribute to bind to.
+ *         We use its name to grab the record by name and also to know
+ *         how many elements we need to grab.
+ *  @param {Mesh} mesh The mesh coming in from Elm.
+ *  @param {Object} attributes The mapping between the attribute names and Elm fields
+ *  @return {WebGLBuffer}
+ */
+function _WebGL_doBindAttribute(gl, attribute, mesh, attributes) {
+  // The length of the number of vertices that
+  // complete one 'thing' based on the drawing mode.
+  // ie, 2 for Lines, 3 for Triangles, etc.
+  var elemSize = mesh.a.elemSize;
+
+  var idxKeys = [];
+  for (var i = 0; i < elemSize; i++) {
+    idxKeys.push(String.fromCharCode(97 + i));
+  }
+
+  function dataFill(data, cnt, fillOffset, elem, key) {
+    var i;
+    if (elemSize === 1) {
+      for (i = 0; i < cnt; i++) {
+        data[fillOffset++] = cnt === 1 ? elem[key] : elem[key][i];
+      }
+    } else {
+      idxKeys.forEach(function (idx) {
+        for (i = 0; i < cnt; i++) {
+          data[fillOffset++] = cnt === 1 ? elem[idx][key] : elem[idx][key][i];
+        }
+      });
+    }
+  }
+
+  var attributeInfo = _WebGL_getAttributeInfo(gl, attribute.type);
+
+  if (attributeInfo === undefined) {
+    throw new Error('No info available for: ' + attribute.type);
+  }
+
+  var dataIdx = 0;
+  var dataOffset = attributeInfo.size * attributeInfo.arraySize * elemSize;
+  var array = new attributeInfo.type(_WebGL_listLength(mesh.b) * dataOffset);
+
+  _WebGL_listEach(function (elem) {
+    dataFill(array, attributeInfo.size * attributeInfo.arraySize, dataIdx, elem, attributes[attribute.name] || attribute.name);
+    dataIdx += dataOffset;
+  }, mesh.b);
+
+  var buffer = gl.createBuffer();
+  _WebGL_log('Created attribute buffer ' + attribute.name);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, array, gl.STATIC_DRAW);
+  return buffer;
+}
+
+/**
+ *  This sets up the binding caching buffers.
+ *
+ *  We don't actually bind any buffers now except for the indices buffer.
+ *  The problem with filling the buffers here is that it is possible to
+ *  have a buffer shared between two webgl shaders;
+ *  which could have different active attributes. If we bind it here against
+ *  a particular program, we might not bind them all. That final bind is now
+ *  done right before drawing.
+ *
+ *  @param {WebGLRenderingContext} gl context
+ *  @param {Mesh} mesh a mesh object from Elm
+ *  @return {Object} buffer - an object with the following properties
+ *  @return {Number} buffer.numIndices
+ *  @return {WebGLBuffer|null} buffer.indexBuffer - optional index buffer
+ *  @return {Object} buffer.buffers - will be used to buffer attributes
+ */
+function _WebGL_doBindSetup(gl, mesh) {
+  if (mesh.a.indexSize > 0) {
+    _WebGL_log('Created index buffer');
+    var indexBuffer = gl.createBuffer();
+    var indices = _WebGL_makeIndexedBuffer(mesh.c, mesh.a.indexSize);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    return {
+      numIndices: indices.length,
+      indexBuffer: indexBuffer,
+      buffers: {}
+    };
+  } else {
+    return {
+      numIndices: mesh.a.elemSize * _WebGL_listLength(mesh.b),
+      indexBuffer: null,
+      buffers: {}
+    };
+  }
+}
+
+/**
+ *  Create an indices array and fill it from indices
+ *  based on the size of the index
+ *
+ *  @param {List} indicesList the list of indices
+ *  @param {Number} indexSize the size of the index
+ *  @return {Uint16Array} indices
+ */
+function _WebGL_makeIndexedBuffer(indicesList, indexSize) {
+  var indices = new Uint16Array(_WebGL_listLength(indicesList) * indexSize);
+  var fillOffset = 0;
+  var i;
+  _WebGL_listEach(function (elem) {
+    if (indexSize === 1) {
+      indices[fillOffset++] = elem;
+    } else {
+      for (i = 0; i < indexSize; i++) {
+        indices[fillOffset++] = elem[String.fromCharCode(97 + i)];
+      }
+    }
+  }, indicesList);
+  return indices;
+}
+
+function _WebGL_getProgID(vertID, fragID) {
+  return vertID + '#' + fragID;
+}
+
+var _WebGL_drawGL = F2(function (model, domNode) {
+
+  var gl = model.f.gl;
+
+  if (!gl) {
+    return domNode;
+  }
+
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+  _WebGL_log('Drawing');
+
+  function drawEntity(entity) {
+    if (!entity.d.b.b) {
+      return; // Empty list
+    }
+
+    var progid;
+    var program;
+    if (entity.b.id && entity.c.id) {
+      progid = _WebGL_getProgID(entity.b.id, entity.c.id);
+      program = model.f.programs[progid];
+    }
+
+    if (!program) {
+
+      var vshader;
+      if (entity.b.id) {
+        vshader = model.f.shaders[entity.b.id];
+      } else {
+        entity.b.id = _WebGL_guid++;
+      }
+
+      if (!vshader) {
+        vshader = _WebGL_doCompile(gl, entity.b.src, gl.VERTEX_SHADER);
+        model.f.shaders[entity.b.id] = vshader;
+      }
+
+      var fshader;
+      if (entity.c.id) {
+        fshader = model.f.shaders[entity.c.id];
+      } else {
+        entity.c.id = _WebGL_guid++;
+      }
+
+      if (!fshader) {
+        fshader = _WebGL_doCompile(gl, entity.c.src, gl.FRAGMENT_SHADER);
+        model.f.shaders[entity.c.id] = fshader;
+      }
+
+      var glProgram = _WebGL_doLink(gl, vshader, fshader);
+
+      program = {
+        glProgram: glProgram,
+        attributes: Object.assign({}, entity.b.attributes, entity.c.attributes),
+        uniformSetters: _WebGL_createUniformSetters(
+          gl,
+          model,
+          glProgram,
+          Object.assign({}, entity.b.uniforms, entity.c.uniforms)
+        )
+      };
+
+      progid = _WebGL_getProgID(entity.b.id, entity.c.id);
+      model.f.programs[progid] = program;
+
+    }
+
+    gl.useProgram(program.glProgram);
+
+    _WebGL_setUniforms(program.uniformSetters, entity.e);
+
+    var buffer = model.f.buffers.get(entity.d);
+
+    if (!buffer) {
+      buffer = _WebGL_doBindSetup(gl, entity.d);
+      model.f.buffers.set(entity.d, buffer);
+    }
+
+    var numAttributes = gl.getProgramParameter(program.glProgram, gl.ACTIVE_ATTRIBUTES);
+
+    for (var i = 0; i < numAttributes; i++) {
+      var attribute = gl.getActiveAttrib(program.glProgram, i);
+
+      var attribLocation = gl.getAttribLocation(program.glProgram, attribute.name);
+      gl.enableVertexAttribArray(attribLocation);
+
+      if (buffer.buffers[attribute.name] === undefined) {
+        buffer.buffers[attribute.name] = _WebGL_doBindAttribute(gl, attribute, entity.d, program.attributes);
+      }
+      var attributeBuffer = buffer.buffers[attribute.name];
+      var attributeInfo = _WebGL_getAttributeInfo(gl, attribute.type);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, attributeBuffer);
+
+      if (attributeInfo.arraySize === 1) {
+        gl.vertexAttribPointer(attribLocation, attributeInfo.size, attributeInfo.baseType, false, 0, 0);
+      } else {
+        // Point to four vec4 in case of mat4
+        var offset = attributeInfo.size * 4; // float32 takes 4 bytes
+        var stride = offset * attributeInfo.arraySize;
+        for (var m = 0; m < attributeInfo.arraySize; m++) {
+          gl.enableVertexAttribArray(attribLocation + m);
+          gl.vertexAttribPointer(attribLocation + m, attributeInfo.size, attributeInfo.baseType, false, stride, offset * m);
+        }
+      }
+    }
+    _WebGL_listEach(elm_explorations$webgl$WebGL$Internal$enableSetting(gl), entity.a);
+
+    if (buffer.indexBuffer) {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indexBuffer);
+      gl.drawElements(entity.d.a.mode, buffer.numIndices, gl.UNSIGNED_SHORT, 0);
+    } else {
+      gl.drawArrays(entity.d.a.mode, 0, buffer.numIndices);
+    }
+
+    _WebGL_listEach(elm_explorations$webgl$WebGL$Internal$disableSetting(model.f), entity.a);
+
+  }
+
+  _WebGL_listEach(drawEntity, model.g);
+  return domNode;
+});
+
+function _WebGL_createUniformSetters(gl, model, program, uniformsMap) {
+  var textureCounter = 0;
+  function createUniformSetter(program, uniform) {
+    var uniformLocation = gl.getUniformLocation(program, uniform.name);
+    switch (uniform.type) {
+      case gl.INT:
+        return function (value) {
+          gl.uniform1i(uniformLocation, value);
+        };
+      case gl.FLOAT:
+        return function (value) {
+          gl.uniform1f(uniformLocation, value);
+        };
+      case gl.FLOAT_VEC2:
+        return function (value) {
+          gl.uniform2fv(uniformLocation, new Float32Array(value));
+        };
+      case gl.FLOAT_VEC3:
+        return function (value) {
+          gl.uniform3fv(uniformLocation, new Float32Array(value));
+        };
+      case gl.FLOAT_VEC4:
+        return function (value) {
+          gl.uniform4fv(uniformLocation, new Float32Array(value));
+        };
+      case gl.FLOAT_MAT4:
+        return function (value) {
+          gl.uniformMatrix4fv(uniformLocation, false, new Float32Array(value));
+        };
+      case gl.SAMPLER_2D:
+        var currentTexture = textureCounter++;
+        return function (texture) {
+          gl.activeTexture(gl.TEXTURE0 + currentTexture);
+          var tex = model.f.textures.get(texture);
+          if (!tex) {
+            _WebGL_log('Created texture');
+            tex = texture.createTexture(gl);
+            model.f.textures.set(texture, tex);
+          }
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.uniform1i(uniformLocation, currentTexture);
+        };
+      case gl.BOOL:
+        return function (value) {
+          gl.uniform1i(uniformLocation, value);
+        };
+      default:
+        _WebGL_log('Unsupported uniform type: ' + uniform.type);
+        return function () { };
+    }
+  }
+
+  var uniformSetters = {};
+  var numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+  for (var i = 0; i < numUniforms; i++) {
+    var uniform = gl.getActiveUniform(program, i);
+    uniformSetters[uniformsMap[uniform.name] || uniform.name] = createUniformSetter(program, uniform);
+  }
+
+  return uniformSetters;
+}
+
+function _WebGL_setUniforms(setters, values) {
+  Object.keys(values).forEach(function (name) {
+    var setter = setters[name];
+    if (setter) {
+      setter(values[name]);
+    }
+  });
+}
+
+// VIRTUAL-DOM WIDGET
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_toHtml = F3(function (options, factList, entities) {
+  return _VirtualDom_custom(
+    factList,
+    {
+      g: entities,
+      f: {},
+      h: options
+    },
+    _WebGL_render,
+    _WebGL_diff
+  );
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableAlpha = F2(function (options, option) {
+  options.contextAttributes.alpha = true;
+  options.contextAttributes.premultipliedAlpha = option.a;
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableDepth = F2(function (options, option) {
+  options.contextAttributes.depth = true;
+  options.sceneSettings.push(function (gl) {
+    gl.clearDepth(option.a);
+  });
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableStencil = F2(function (options, option) {
+  options.contextAttributes.stencil = true;
+  options.sceneSettings.push(function (gl) {
+    gl.clearStencil(option.a);
+  });
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableAntialias = F2(function (options, option) {
+  options.contextAttributes.antialias = true;
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enableClearColor = F2(function (options, option) {
+  options.sceneSettings.push(function (gl) {
+    gl.clearColor(option.a, option.b, option.c, option.d);
+  });
+});
+
+// eslint-disable-next-line no-unused-vars
+var _WebGL_enablePreserveDrawingBuffer = F2(function (options, option) {
+  options.contextAttributes.preserveDrawingBuffer = true;
+});
+
+/**
+ *  Creates canvas and schedules initial _WebGL_drawGL
+ *  @param {Object} model
+ *  @param {Object} model.f that may contain the following properties:
+           gl, shaders, programs, buffers, textures
+ *  @param {List<Option>} model.h list of options coming from Elm
+ *  @param {List<Entity>} model.g list of entities coming from Elm
+ *  @return {HTMLElement} <canvas> if WebGL is supported, otherwise a <div>
+ */
+function _WebGL_render(model) {
+  var options = {
+    contextAttributes: {
+      alpha: false,
+      depth: false,
+      stencil: false,
+      antialias: false,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: false
+    },
+    sceneSettings: []
+  };
+
+  _WebGL_listEach(function (option) {
+    return A2(elm_explorations$webgl$WebGL$Internal$enableOption, options, option);
+  }, model.h);
+
+  _WebGL_log('Render canvas');
+  var canvas = _VirtualDom_doc.createElement('canvas');
+  var gl = canvas.getContext && (
+    canvas.getContext('webgl', options.contextAttributes) ||
+    canvas.getContext('experimental-webgl', options.contextAttributes)
+  );
+
+  if (gl && typeof WeakMap !== 'undefined') {
+    options.sceneSettings.forEach(function (sceneSetting) {
+      sceneSetting(gl);
+    });
+
+    model.f.gl = gl;
+    model.f.shaders = [];
+    model.f.programs = {};
+    model.f.buffers = new WeakMap();
+    model.f.textures = new WeakMap();
+    // Memorize the initial stencil write mask, because
+    // browsers may have different number of stencil bits
+    model.f.STENCIL_WRITEMASK = gl.getParameter(gl.STENCIL_WRITEMASK);
+
+    // Render for the first time.
+    // This has to be done in animation frame,
+    // because the canvas is not in the DOM yet
+    _WebGL_rAF(function () {
+      return A2(_WebGL_drawGL, model, canvas);
+    });
+
+  } else {
+    canvas = _VirtualDom_doc.createElement('div');
+    canvas.innerHTML = '<a href="https://get.webgl.org/">Enable WebGL</a> to see this content!';
+  }
+
+  return canvas;
+}
+
+function _WebGL_diff(oldModel, newModel) {
+  newModel.f = oldModel.f;
+  return _WebGL_drawGL(newModel);
+}
+
+
 
 
 // ELEMENT
@@ -4870,10 +6762,42 @@ var author$project$A_Model$PlayerData = F4(
 	function (boardCards, resourceProductions, resourceCosts, gold) {
 		return {boardCards: boardCards, gold: gold, resourceCosts: resourceCosts, resourceProductions: resourceProductions};
 	});
-var author$project$A_Model$Card = F6(
-	function (name, goldCost, resourceCost, effect, chainingTargets, chainingSources) {
-		return {chainingSources: chainingSources, chainingTargets: chainingTargets, effect: effect, goldCost: goldCost, name: name, resourceCost: resourceCost};
+var author$project$A_Model$Card = F7(
+	function (color, name, goldCost, resourceCost, effect, chainingTargets, chainingSources) {
+		return {chainingSources: chainingSources, chainingTargets: chainingTargets, color: color, effect: effect, goldCost: goldCost, name: name, resourceCost: resourceCost};
 	});
+var author$project$A_Model$Blue = {$: 'Blue'};
+var author$project$A_Model$Brown = {$: 'Brown'};
+var author$project$A_Model$Gray = {$: 'Gray'};
+var author$project$A_Model$Green = {$: 'Green'};
+var author$project$A_Model$Purple = {$: 'Purple'};
+var author$project$A_Model$Red = {$: 'Red'};
+var author$project$A_Model$Yellow = {$: 'Yellow'};
+var elm$json$Json$Decode$int = _Json_decodeInt;
+var elm$json$Json$Decode$map = _Json_map1;
+var author$project$Data$Decode$cardColor = A2(
+	elm$json$Json$Decode$map,
+	function (x) {
+		switch (x) {
+			case 0:
+				return author$project$A_Model$Blue;
+			case 1:
+				return author$project$A_Model$Brown;
+			case 2:
+				return author$project$A_Model$Gray;
+			case 3:
+				return author$project$A_Model$Green;
+			case 4:
+				return author$project$A_Model$Purple;
+			case 5:
+				return author$project$A_Model$Red;
+			case 6:
+				return author$project$A_Model$Yellow;
+			default:
+				return author$project$A_Model$Purple;
+		}
+	},
+	elm$json$Json$Decode$int);
 var author$project$A_Model$ManufacturedProductsCost = {$: 'ManufacturedProductsCost'};
 var author$project$A_Model$Points = function (a) {
 	return {$: 'Points', a: a};
@@ -4902,7 +6826,6 @@ var author$project$Data$Decode$exact = F2(
 			},
 			src);
 	});
-var elm$json$Json$Decode$int = _Json_decodeInt;
 var elm$json$Json$Decode$list = _Json_decodeList;
 var author$project$Data$Decode$resourceArray = elm$json$Json$Decode$list(elm$json$Json$Decode$int);
 var elm$core$Basics$always = F2(
@@ -4969,7 +6892,6 @@ var elm$json$Json$Decode$at = F2(
 	function (fields, decoder) {
 		return A3(elm$core$List$foldr, elm$json$Json$Decode$field, decoder, fields);
 	});
-var elm$json$Json$Decode$map = _Json_map1;
 var elm$json$Json$Decode$oneOf = _Json_oneOf;
 var elm$json$Json$Decode$string = _Json_decodeString;
 var author$project$Data$Decode$cardEffect = elm$json$Json$Decode$oneOf(
@@ -5005,10 +6927,15 @@ var author$project$Data$Decode$cardEffect = elm$json$Json$Decode$oneOf(
 				['Science']),
 			A2(elm$json$Json$Decode$map, author$project$A_Model$Science, elm$json$Json$Decode$int))
 		]));
-var elm$json$Json$Decode$map6 = _Json_map6;
-var author$project$Data$Decode$card = A7(
-	elm$json$Json$Decode$map6,
+var elm$json$Json$Decode$map7 = _Json_map7;
+var author$project$Data$Decode$card = A8(
+	elm$json$Json$Decode$map7,
 	author$project$A_Model$Card,
+	A2(
+		elm$json$Json$Decode$at,
+		_List_fromArray(
+			['color']),
+		author$project$Data$Decode$cardColor),
 	A2(
 		elm$json$Json$Decode$at,
 		_List_fromArray(
@@ -5436,10 +7363,1140 @@ var author$project$F_Update$handleNewGameMessage = F2(
 							A2(author$project$C_Data$CreateGame, ngd.name, ngd.playerCount))));
 		}
 	});
+var author$project$B_Message$RenderParametersLoaded = function (a) {
+	return {$: 'RenderParametersLoaded', a: a};
+};
+var author$project$A_Model$RenderParameters = F2(
+	function (atlas, font) {
+		return {atlas: atlas, font: font};
+	});
+var elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var elm$core$Dict$empty = elm$core$Dict$RBEmpty_elm_builtin;
+var elm$core$Dict$Black = {$: 'Black'};
+var elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var elm$core$Basics$compare = _Utils_compare;
+var elm$core$Dict$Red = {$: 'Red'};
+var elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _n1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _n3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Red,
+					key,
+					value,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _n5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _n6 = left.d;
+				var _n7 = _n6.a;
+				var llK = _n6.b;
+				var llV = _n6.c;
+				var llLeft = _n6.d;
+				var llRight = _n6.e;
+				var lRight = left.e;
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Red,
+					lK,
+					lV,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5(elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, key, value, elm$core$Dict$RBEmpty_elm_builtin, elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _n1 = A2(elm$core$Basics$compare, key, nKey);
+			switch (_n1.$) {
+				case 'LT':
+					return A5(
+						elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3(elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5(elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3(elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _n0 = A3(elm$core$Dict$insertHelp, key, value, dict);
+		if ((_n0.$ === 'RBNode_elm_builtin') && (_n0.a.$ === 'Red')) {
+			var _n1 = _n0.a;
+			var k = _n0.b;
+			var v = _n0.c;
+			var l = _n0.d;
+			var r = _n0.e;
+			return A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _n0;
+			return x;
+		}
+	});
+var elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (_n0, dict) {
+				var key = _n0.a;
+				var value = _n0.b;
+				return A3(elm$core$Dict$insert, key, value, dict);
+			}),
+		elm$core$Dict$empty,
+		assocs);
+};
+var elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var author$project$Data$Font$buildLoadedFontInfo = function (fontInfo) {
+	return {
+		chars: elm$core$Dict$fromList(
+			A2(
+				elm$core$List$map,
+				function (charInfo) {
+					return _Utils_Tuple2(charInfo._char, charInfo);
+				},
+				fontInfo.chars)),
+		common: fontInfo.common
+	};
+};
+var author$project$Data$Font$RawFontInfo = F2(
+	function (chars, common) {
+		return {chars: chars, common: common};
+	});
+var author$project$Data$Font$CharInfo = F8(
+	function (_char, x, y, width, height, xoffset, yoffset, xadvance) {
+		return {_char: _char, height: height, width: width, x: x, xadvance: xadvance, xoffset: xoffset, y: y, yoffset: yoffset};
+	});
+var elm$json$Json$Decode$map8 = _Json_map8;
+var author$project$Data$Font$charInfoDecoder = A9(
+	elm$json$Json$Decode$map8,
+	author$project$Data$Font$CharInfo,
+	A2(elm$json$Json$Decode$field, 'char', elm$json$Json$Decode$string),
+	A2(elm$json$Json$Decode$field, 'x', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'y', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'width', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'height', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'xoffset', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'yoffset', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'xadvance', elm$json$Json$Decode$int));
+var author$project$Data$Font$CommonInfo = F4(
+	function (lineHeight, scaleW, scaleH, whitestCell) {
+		return {lineHeight: lineHeight, scaleH: scaleH, scaleW: scaleW, whitestCell: whitestCell};
+	});
 var elm$core$Tuple$pair = F2(
 	function (a, b) {
 		return _Utils_Tuple2(a, b);
 	});
+var author$project$Data$Font$commonInfoDecoder = A5(
+	elm$json$Json$Decode$map4,
+	author$project$Data$Font$CommonInfo,
+	A2(elm$json$Json$Decode$field, 'lineHeight', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'scaleW', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'scaleH', elm$json$Json$Decode$int),
+	A2(
+		elm$json$Json$Decode$field,
+		'whitestCell',
+		A3(
+			elm$json$Json$Decode$map2,
+			elm$core$Tuple$pair,
+			A2(elm$json$Json$Decode$index, 0, elm$json$Json$Decode$int),
+			A2(elm$json$Json$Decode$index, 1, elm$json$Json$Decode$int))));
+var author$project$Data$Font$fontInfoDecoder = A3(
+	elm$json$Json$Decode$map2,
+	author$project$Data$Font$RawFontInfo,
+	A2(
+		elm$json$Json$Decode$field,
+		'chars',
+		elm$json$Json$Decode$list(author$project$Data$Font$charInfoDecoder)),
+	A2(elm$json$Json$Decode$field, 'common', author$project$Data$Font$commonInfoDecoder));
+var author$project$Data$Font$fontDecoder = A2(elm$json$Json$Decode$map, author$project$Data$Font$buildLoadedFontInfo, author$project$Data$Font$fontInfoDecoder);
+var author$project$Data$TextureAtlas$buildLoadedTextureAtlas = function (atlas) {
+	return {
+		common: atlas.metadata,
+		textures: elm$core$Dict$fromList(
+			A2(
+				elm$core$List$map,
+				function (imageInfo) {
+					return _Utils_Tuple2(imageInfo.name, imageInfo);
+				},
+				atlas.images))
+	};
+};
+var author$project$Data$TextureAtlas$RawTextureAtlas = F2(
+	function (images, metadata) {
+		return {images: images, metadata: metadata};
+	});
+var author$project$Data$TextureAtlas$CommonInfo = F2(
+	function (width, height) {
+		return {height: height, width: width};
+	});
+var elm$json$Json$Decode$float = _Json_decodeFloat;
+var author$project$Data$TextureAtlas$decodeCommonInfo = A3(
+	elm$json$Json$Decode$map2,
+	author$project$Data$TextureAtlas$CommonInfo,
+	A2(
+		elm$json$Json$Decode$field,
+		'size',
+		A2(elm$json$Json$Decode$index, 0, elm$json$Json$Decode$float)),
+	A2(
+		elm$json$Json$Decode$field,
+		'size',
+		A2(elm$json$Json$Decode$index, 1, elm$json$Json$Decode$float)));
+var author$project$Data$TextureAtlas$ImageInfo = F5(
+	function (name, x1, x2, y1, y2) {
+		return {name: name, x1: x1, x2: x2, y1: y1, y2: y2};
+	});
+var elm$json$Json$Decode$map5 = _Json_map5;
+var author$project$Data$TextureAtlas$decodeImageInfo = A6(
+	elm$json$Json$Decode$map5,
+	author$project$Data$TextureAtlas$ImageInfo,
+	A2(elm$json$Json$Decode$field, 'name', elm$json$Json$Decode$string),
+	A2(
+		elm$json$Json$Decode$field,
+		'position',
+		A2(
+			elm$json$Json$Decode$index,
+			0,
+			A2(elm$json$Json$Decode$index, 0, elm$json$Json$Decode$float))),
+	A2(
+		elm$json$Json$Decode$field,
+		'position',
+		A2(
+			elm$json$Json$Decode$index,
+			1,
+			A2(elm$json$Json$Decode$index, 0, elm$json$Json$Decode$float))),
+	A2(
+		elm$json$Json$Decode$field,
+		'position',
+		A2(
+			elm$json$Json$Decode$index,
+			0,
+			A2(elm$json$Json$Decode$index, 1, elm$json$Json$Decode$float))),
+	A2(
+		elm$json$Json$Decode$field,
+		'position',
+		A2(
+			elm$json$Json$Decode$index,
+			1,
+			A2(elm$json$Json$Decode$index, 1, elm$json$Json$Decode$float))));
+var author$project$Data$TextureAtlas$decodeRawTextureAtlas = A3(
+	elm$json$Json$Decode$map2,
+	author$project$Data$TextureAtlas$RawTextureAtlas,
+	A2(
+		elm$json$Json$Decode$field,
+		'images',
+		elm$json$Json$Decode$list(author$project$Data$TextureAtlas$decodeImageInfo)),
+	A2(elm$json$Json$Decode$field, 'metadata', author$project$Data$TextureAtlas$decodeCommonInfo));
+var author$project$Data$TextureAtlas$textureAtlasDecoder = A2(elm$json$Json$Decode$map, author$project$Data$TextureAtlas$buildLoadedTextureAtlas, author$project$Data$TextureAtlas$decodeRawTextureAtlas);
+var author$project$F_Update$renderParametersDecoder = A3(
+	elm$json$Json$Decode$map2,
+	author$project$A_Model$RenderParameters,
+	A2(elm$json$Json$Decode$field, 'textures', author$project$Data$TextureAtlas$textureAtlasDecoder),
+	A2(elm$json$Json$Decode$field, 'font', author$project$Data$Font$fontDecoder));
+var elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Result$toMaybe = function (result) {
+	if (result.$ === 'Ok') {
+		var v = result.a;
+		return elm$core$Maybe$Just(v);
+	} else {
+		return elm$core$Maybe$Nothing;
+	}
+};
+var elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _n1 = A2(elm$core$Basics$compare, targetKey, key);
+				switch (_n1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var elm$core$Dict$getMin = function (dict) {
+	getMin:
+	while (true) {
+		if ((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) {
+			var left = dict.d;
+			var $temp$dict = left;
+			dict = $temp$dict;
+			continue getMin;
+		} else {
+			return dict;
+		}
+	}
+};
+var elm$core$Dict$moveRedLeft = function (dict) {
+	if (((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) && (dict.e.$ === 'RBNode_elm_builtin')) {
+		if ((dict.e.d.$ === 'RBNode_elm_builtin') && (dict.e.d.a.$ === 'Red')) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _n1 = dict.d;
+			var lClr = _n1.a;
+			var lK = _n1.b;
+			var lV = _n1.c;
+			var lLeft = _n1.d;
+			var lRight = _n1.e;
+			var _n2 = dict.e;
+			var rClr = _n2.a;
+			var rK = _n2.b;
+			var rV = _n2.c;
+			var rLeft = _n2.d;
+			var _n3 = rLeft.a;
+			var rlK = rLeft.b;
+			var rlV = rLeft.c;
+			var rlL = rLeft.d;
+			var rlR = rLeft.e;
+			var rRight = _n2.e;
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				elm$core$Dict$Red,
+				rlK,
+				rlV,
+				A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					rlL),
+				A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, rK, rV, rlR, rRight));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _n4 = dict.d;
+			var lClr = _n4.a;
+			var lK = _n4.b;
+			var lV = _n4.c;
+			var lLeft = _n4.d;
+			var lRight = _n4.e;
+			var _n5 = dict.e;
+			var rClr = _n5.a;
+			var rK = _n5.b;
+			var rV = _n5.c;
+			var rLeft = _n5.d;
+			var rRight = _n5.e;
+			if (clr.$ === 'Black') {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var elm$core$Dict$moveRedRight = function (dict) {
+	if (((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) && (dict.e.$ === 'RBNode_elm_builtin')) {
+		if ((dict.d.d.$ === 'RBNode_elm_builtin') && (dict.d.d.a.$ === 'Red')) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _n1 = dict.d;
+			var lClr = _n1.a;
+			var lK = _n1.b;
+			var lV = _n1.c;
+			var _n2 = _n1.d;
+			var _n3 = _n2.a;
+			var llK = _n2.b;
+			var llV = _n2.c;
+			var llLeft = _n2.d;
+			var llRight = _n2.e;
+			var lRight = _n1.e;
+			var _n4 = dict.e;
+			var rClr = _n4.a;
+			var rK = _n4.b;
+			var rV = _n4.c;
+			var rLeft = _n4.d;
+			var rRight = _n4.e;
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				elm$core$Dict$Red,
+				lK,
+				lV,
+				A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, llK, llV, llLeft, llRight),
+				A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					lRight,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, rK, rV, rLeft, rRight)));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _n5 = dict.d;
+			var lClr = _n5.a;
+			var lK = _n5.b;
+			var lV = _n5.c;
+			var lLeft = _n5.d;
+			var lRight = _n5.e;
+			var _n6 = dict.e;
+			var rClr = _n6.a;
+			var rK = _n6.b;
+			var rV = _n6.c;
+			var rLeft = _n6.d;
+			var rRight = _n6.e;
+			if (clr.$ === 'Black') {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Black,
+					k,
+					v,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var elm$core$Dict$removeHelpPrepEQGT = F7(
+	function (targetKey, dict, color, key, value, left, right) {
+		if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+			var _n1 = left.a;
+			var lK = left.b;
+			var lV = left.c;
+			var lLeft = left.d;
+			var lRight = left.e;
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				color,
+				lK,
+				lV,
+				lLeft,
+				A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, key, value, lRight, right));
+		} else {
+			_n2$2:
+			while (true) {
+				if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Black')) {
+					if (right.d.$ === 'RBNode_elm_builtin') {
+						if (right.d.a.$ === 'Black') {
+							var _n3 = right.a;
+							var _n4 = right.d;
+							var _n5 = _n4.a;
+							return elm$core$Dict$moveRedRight(dict);
+						} else {
+							break _n2$2;
+						}
+					} else {
+						var _n6 = right.a;
+						var _n7 = right.d;
+						return elm$core$Dict$moveRedRight(dict);
+					}
+				} else {
+					break _n2$2;
+				}
+			}
+			return dict;
+		}
+	});
+var elm$core$Dict$removeMin = function (dict) {
+	if ((dict.$ === 'RBNode_elm_builtin') && (dict.d.$ === 'RBNode_elm_builtin')) {
+		var color = dict.a;
+		var key = dict.b;
+		var value = dict.c;
+		var left = dict.d;
+		var lColor = left.a;
+		var lLeft = left.d;
+		var right = dict.e;
+		if (lColor.$ === 'Black') {
+			if ((lLeft.$ === 'RBNode_elm_builtin') && (lLeft.a.$ === 'Red')) {
+				var _n3 = lLeft.a;
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					color,
+					key,
+					value,
+					elm$core$Dict$removeMin(left),
+					right);
+			} else {
+				var _n4 = elm$core$Dict$moveRedLeft(dict);
+				if (_n4.$ === 'RBNode_elm_builtin') {
+					var nColor = _n4.a;
+					var nKey = _n4.b;
+					var nValue = _n4.c;
+					var nLeft = _n4.d;
+					var nRight = _n4.e;
+					return A5(
+						elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						elm$core$Dict$removeMin(nLeft),
+						nRight);
+				} else {
+					return elm$core$Dict$RBEmpty_elm_builtin;
+				}
+			}
+		} else {
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				value,
+				elm$core$Dict$removeMin(left),
+				right);
+		}
+	} else {
+		return elm$core$Dict$RBEmpty_elm_builtin;
+	}
+};
+var elm$core$Dict$removeHelp = F2(
+	function (targetKey, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			if (_Utils_cmp(targetKey, key) < 0) {
+				if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Black')) {
+					var _n4 = left.a;
+					var lLeft = left.d;
+					if ((lLeft.$ === 'RBNode_elm_builtin') && (lLeft.a.$ === 'Red')) {
+						var _n6 = lLeft.a;
+						return A5(
+							elm$core$Dict$RBNode_elm_builtin,
+							color,
+							key,
+							value,
+							A2(elm$core$Dict$removeHelp, targetKey, left),
+							right);
+					} else {
+						var _n7 = elm$core$Dict$moveRedLeft(dict);
+						if (_n7.$ === 'RBNode_elm_builtin') {
+							var nColor = _n7.a;
+							var nKey = _n7.b;
+							var nValue = _n7.c;
+							var nLeft = _n7.d;
+							var nRight = _n7.e;
+							return A5(
+								elm$core$Dict$balance,
+								nColor,
+								nKey,
+								nValue,
+								A2(elm$core$Dict$removeHelp, targetKey, nLeft),
+								nRight);
+						} else {
+							return elm$core$Dict$RBEmpty_elm_builtin;
+						}
+					}
+				} else {
+					return A5(
+						elm$core$Dict$RBNode_elm_builtin,
+						color,
+						key,
+						value,
+						A2(elm$core$Dict$removeHelp, targetKey, left),
+						right);
+				}
+			} else {
+				return A2(
+					elm$core$Dict$removeHelpEQGT,
+					targetKey,
+					A7(elm$core$Dict$removeHelpPrepEQGT, targetKey, dict, color, key, value, left, right));
+			}
+		}
+	});
+var elm$core$Dict$removeHelpEQGT = F2(
+	function (targetKey, dict) {
+		if (dict.$ === 'RBNode_elm_builtin') {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			if (_Utils_eq(targetKey, key)) {
+				var _n1 = elm$core$Dict$getMin(right);
+				if (_n1.$ === 'RBNode_elm_builtin') {
+					var minKey = _n1.b;
+					var minValue = _n1.c;
+					return A5(
+						elm$core$Dict$balance,
+						color,
+						minKey,
+						minValue,
+						left,
+						elm$core$Dict$removeMin(right));
+				} else {
+					return elm$core$Dict$RBEmpty_elm_builtin;
+				}
+			} else {
+				return A5(
+					elm$core$Dict$balance,
+					color,
+					key,
+					value,
+					left,
+					A2(elm$core$Dict$removeHelp, targetKey, right));
+			}
+		} else {
+			return elm$core$Dict$RBEmpty_elm_builtin;
+		}
+	});
+var elm$core$Dict$remove = F2(
+	function (key, dict) {
+		var _n0 = A2(elm$core$Dict$removeHelp, key, dict);
+		if ((_n0.$ === 'RBNode_elm_builtin') && (_n0.a.$ === 'Red')) {
+			var _n1 = _n0.a;
+			var k = _n0.b;
+			var v = _n0.c;
+			var l = _n0.d;
+			var r = _n0.e;
+			return A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _n0;
+			return x;
+		}
+	});
+var elm$core$Dict$update = F3(
+	function (targetKey, alter, dictionary) {
+		var _n0 = alter(
+			A2(elm$core$Dict$get, targetKey, dictionary));
+		if (_n0.$ === 'Just') {
+			var value = _n0.a;
+			return A3(elm$core$Dict$insert, targetKey, value, dictionary);
+		} else {
+			return A2(elm$core$Dict$remove, targetKey, dictionary);
+		}
+	});
+var elm$core$Maybe$isJust = function (maybe) {
+	if (maybe.$ === 'Just') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var elm$core$Platform$sendToApp = _Platform_sendToApp;
+var elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var elm$core$Result$map = F2(
+	function (func, ra) {
+		if (ra.$ === 'Ok') {
+			var a = ra.a;
+			return elm$core$Result$Ok(
+				func(a));
+		} else {
+			var e = ra.a;
+			return elm$core$Result$Err(e);
+		}
+	});
+var elm$http$Http$BadStatus_ = F2(
+	function (a, b) {
+		return {$: 'BadStatus_', a: a, b: b};
+	});
+var elm$http$Http$BadUrl_ = function (a) {
+	return {$: 'BadUrl_', a: a};
+};
+var elm$http$Http$GoodStatus_ = F2(
+	function (a, b) {
+		return {$: 'GoodStatus_', a: a, b: b};
+	});
+var elm$http$Http$NetworkError_ = {$: 'NetworkError_'};
+var elm$http$Http$Receiving = function (a) {
+	return {$: 'Receiving', a: a};
+};
+var elm$http$Http$Sending = function (a) {
+	return {$: 'Sending', a: a};
+};
+var elm$http$Http$Timeout_ = {$: 'Timeout_'};
+var elm$http$Http$expectStringResponse = F2(
+	function (toMsg, toResult) {
+		return A3(
+			_Http_expect,
+			'',
+			elm$core$Basics$identity,
+			A2(elm$core$Basics$composeR, toResult, toMsg));
+	});
+var elm$http$Http$BadBody = function (a) {
+	return {$: 'BadBody', a: a};
+};
+var elm$http$Http$BadStatus = function (a) {
+	return {$: 'BadStatus', a: a};
+};
+var elm$http$Http$BadUrl = function (a) {
+	return {$: 'BadUrl', a: a};
+};
+var elm$http$Http$NetworkError = {$: 'NetworkError'};
+var elm$http$Http$Timeout = {$: 'Timeout'};
+var elm$http$Http$resolve = F2(
+	function (toResult, response) {
+		switch (response.$) {
+			case 'BadUrl_':
+				var url = response.a;
+				return elm$core$Result$Err(
+					elm$http$Http$BadUrl(url));
+			case 'Timeout_':
+				return elm$core$Result$Err(elm$http$Http$Timeout);
+			case 'NetworkError_':
+				return elm$core$Result$Err(elm$http$Http$NetworkError);
+			case 'BadStatus_':
+				var metadata = response.a;
+				return elm$core$Result$Err(
+					elm$http$Http$BadStatus(metadata.statusCode));
+			default:
+				var body = response.b;
+				return A2(
+					elm$core$Result$mapError,
+					elm$http$Http$BadBody,
+					toResult(body));
+		}
+	});
+var elm$http$Http$expectJson = F2(
+	function (toMsg, decoder) {
+		return A2(
+			elm$http$Http$expectStringResponse,
+			toMsg,
+			elm$http$Http$resolve(
+				function (string) {
+					return A2(
+						elm$core$Result$mapError,
+						elm$json$Json$Decode$errorToString,
+						A2(elm$json$Json$Decode$decodeString, decoder, string));
+				}));
+	});
+var elm$http$Http$emptyBody = _Http_emptyBody;
+var elm$http$Http$Request = function (a) {
+	return {$: 'Request', a: a};
+};
+var elm$core$Task$succeed = _Scheduler_succeed;
+var elm$http$Http$State = F2(
+	function (reqs, subs) {
+		return {reqs: reqs, subs: subs};
+	});
+var elm$http$Http$init = elm$core$Task$succeed(
+	A2(elm$http$Http$State, elm$core$Dict$empty, _List_Nil));
+var elm$core$Task$andThen = _Scheduler_andThen;
+var elm$core$Process$kill = _Scheduler_kill;
+var elm$core$Process$spawn = _Scheduler_spawn;
+var elm$http$Http$updateReqs = F3(
+	function (router, cmds, reqs) {
+		updateReqs:
+		while (true) {
+			if (!cmds.b) {
+				return elm$core$Task$succeed(reqs);
+			} else {
+				var cmd = cmds.a;
+				var otherCmds = cmds.b;
+				if (cmd.$ === 'Cancel') {
+					var tracker = cmd.a;
+					var _n2 = A2(elm$core$Dict$get, tracker, reqs);
+					if (_n2.$ === 'Nothing') {
+						var $temp$router = router,
+							$temp$cmds = otherCmds,
+							$temp$reqs = reqs;
+						router = $temp$router;
+						cmds = $temp$cmds;
+						reqs = $temp$reqs;
+						continue updateReqs;
+					} else {
+						var pid = _n2.a;
+						return A2(
+							elm$core$Task$andThen,
+							function (_n3) {
+								return A3(
+									elm$http$Http$updateReqs,
+									router,
+									otherCmds,
+									A2(elm$core$Dict$remove, tracker, reqs));
+							},
+							elm$core$Process$kill(pid));
+					}
+				} else {
+					var req = cmd.a;
+					return A2(
+						elm$core$Task$andThen,
+						function (pid) {
+							var _n4 = req.tracker;
+							if (_n4.$ === 'Nothing') {
+								return A3(elm$http$Http$updateReqs, router, otherCmds, reqs);
+							} else {
+								var tracker = _n4.a;
+								return A3(
+									elm$http$Http$updateReqs,
+									router,
+									otherCmds,
+									A3(elm$core$Dict$insert, tracker, pid, reqs));
+							}
+						},
+						elm$core$Process$spawn(
+							A3(
+								_Http_toTask,
+								router,
+								elm$core$Platform$sendToApp(router),
+								req)));
+				}
+			}
+		}
+	});
+var elm$http$Http$onEffects = F4(
+	function (router, cmds, subs, state) {
+		return A2(
+			elm$core$Task$andThen,
+			function (reqs) {
+				return elm$core$Task$succeed(
+					A2(elm$http$Http$State, reqs, subs));
+			},
+			A3(elm$http$Http$updateReqs, router, cmds, state.reqs));
+	});
+var elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _n0 = f(mx);
+		if (_n0.$ === 'Just') {
+			var x = _n0.a;
+			return A2(elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var elm$core$Task$map2 = F3(
+	function (func, taskA, taskB) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return A2(
+					elm$core$Task$andThen,
+					function (b) {
+						return elm$core$Task$succeed(
+							A2(func, a, b));
+					},
+					taskB);
+			},
+			taskA);
+	});
+var elm$core$Task$sequence = function (tasks) {
+	return A3(
+		elm$core$List$foldr,
+		elm$core$Task$map2(elm$core$List$cons),
+		elm$core$Task$succeed(_List_Nil),
+		tasks);
+};
+var elm$http$Http$maybeSend = F4(
+	function (router, desiredTracker, progress, _n0) {
+		var actualTracker = _n0.a;
+		var toMsg = _n0.b;
+		return _Utils_eq(desiredTracker, actualTracker) ? elm$core$Maybe$Just(
+			A2(
+				elm$core$Platform$sendToApp,
+				router,
+				toMsg(progress))) : elm$core$Maybe$Nothing;
+	});
+var elm$http$Http$onSelfMsg = F3(
+	function (router, _n0, state) {
+		var tracker = _n0.a;
+		var progress = _n0.b;
+		return A2(
+			elm$core$Task$andThen,
+			function (_n1) {
+				return elm$core$Task$succeed(state);
+			},
+			elm$core$Task$sequence(
+				A2(
+					elm$core$List$filterMap,
+					A3(elm$http$Http$maybeSend, router, tracker, progress),
+					state.subs)));
+	});
+var elm$http$Http$Cancel = function (a) {
+	return {$: 'Cancel', a: a};
+};
+var elm$http$Http$cmdMap = F2(
+	function (func, cmd) {
+		if (cmd.$ === 'Cancel') {
+			var tracker = cmd.a;
+			return elm$http$Http$Cancel(tracker);
+		} else {
+			var r = cmd.a;
+			return elm$http$Http$Request(
+				{
+					allowCookiesFromOtherDomains: r.allowCookiesFromOtherDomains,
+					body: r.body,
+					expect: A2(_Http_mapExpect, func, r.expect),
+					headers: r.headers,
+					method: r.method,
+					timeout: r.timeout,
+					tracker: r.tracker,
+					url: r.url
+				});
+		}
+	});
+var elm$http$Http$MySub = F2(
+	function (a, b) {
+		return {$: 'MySub', a: a, b: b};
+	});
+var elm$http$Http$subMap = F2(
+	function (func, _n0) {
+		var tracker = _n0.a;
+		var toMsg = _n0.b;
+		return A2(
+			elm$http$Http$MySub,
+			tracker,
+			A2(elm$core$Basics$composeR, toMsg, func));
+	});
+_Platform_effectManagers['Http'] = _Platform_createManager(elm$http$Http$init, elm$http$Http$onEffects, elm$http$Http$onSelfMsg, elm$http$Http$cmdMap, elm$http$Http$subMap);
+var elm$http$Http$command = _Platform_leaf('Http');
+var elm$http$Http$subscription = _Platform_leaf('Http');
+var elm$http$Http$request = function (r) {
+	return elm$http$Http$command(
+		elm$http$Http$Request(
+			{allowCookiesFromOtherDomains: false, body: r.body, expect: r.expect, headers: r.headers, method: r.method, timeout: r.timeout, tracker: r.tracker, url: r.url}));
+};
+var elm$http$Http$get = function (r) {
+	return elm$http$Http$request(
+		{body: elm$http$Http$emptyBody, expect: r.expect, headers: _List_Nil, method: 'GET', timeout: elm$core$Maybe$Nothing, tracker: elm$core$Maybe$Nothing, url: r.url});
+};
+var author$project$F_Update$loadRenderParameters = elm$http$Http$get(
+	{
+		expect: A2(
+			elm$http$Http$expectJson,
+			A2(elm$core$Basics$composeR, elm$core$Result$toMaybe, author$project$B_Message$RenderParametersLoaded),
+			author$project$F_Update$renderParametersDecoder),
+		url: '/data.json'
+	});
+var author$project$A_Model$Textures = F2(
+	function (atlas, text) {
+		return {atlas: atlas, text: text};
+	});
+var author$project$B_Message$TexturesLoaded = function (a) {
+	return {$: 'TexturesLoaded', a: a};
+};
+var elm_explorations$webgl$WebGL$Texture$Resize = function (a) {
+	return {$: 'Resize', a: a};
+};
+var elm_explorations$webgl$WebGL$Texture$linear = elm_explorations$webgl$WebGL$Texture$Resize(9729);
+var elm_explorations$webgl$WebGL$Texture$nearestMipmapLinear = elm_explorations$webgl$WebGL$Texture$Resize(9986);
+var elm_explorations$webgl$WebGL$Texture$Wrap = function (a) {
+	return {$: 'Wrap', a: a};
+};
+var elm_explorations$webgl$WebGL$Texture$repeat = elm_explorations$webgl$WebGL$Texture$Wrap(10497);
+var elm_explorations$webgl$WebGL$Texture$defaultOptions = {flipY: true, horizontalWrap: elm_explorations$webgl$WebGL$Texture$repeat, magnify: elm_explorations$webgl$WebGL$Texture$linear, minify: elm_explorations$webgl$WebGL$Texture$nearestMipmapLinear, verticalWrap: elm_explorations$webgl$WebGL$Texture$repeat};
+var elm_explorations$webgl$WebGL$Texture$LoadError = {$: 'LoadError'};
+var elm_explorations$webgl$WebGL$Texture$SizeError = F2(
+	function (a, b) {
+		return {$: 'SizeError', a: a, b: b};
+	});
+var elm_explorations$webgl$WebGL$Texture$loadWith = F2(
+	function (_n0, url) {
+		var magnify = _n0.magnify;
+		var minify = _n0.minify;
+		var horizontalWrap = _n0.horizontalWrap;
+		var verticalWrap = _n0.verticalWrap;
+		var flipY = _n0.flipY;
+		var expand = F4(
+			function (_n1, _n2, _n3, _n4) {
+				var mag = _n1.a;
+				var min = _n2.a;
+				var hor = _n3.a;
+				var vert = _n4.a;
+				return A6(_Texture_load, mag, min, hor, vert, flipY, url);
+			});
+		return A4(expand, magnify, minify, horizontalWrap, verticalWrap);
+	});
+var elm_explorations$webgl$WebGL$Texture$nearest = elm_explorations$webgl$WebGL$Texture$Resize(9728);
+var author$project$Render$Image$loadTexture = A2(
+	elm_explorations$webgl$WebGL$Texture$loadWith,
+	_Utils_update(
+		elm_explorations$webgl$WebGL$Texture$defaultOptions,
+		{magnify: elm_explorations$webgl$WebGL$Texture$nearest, minify: elm_explorations$webgl$WebGL$Texture$nearest}),
+	'/textures.png');
+var author$project$Render$Text$loadTexture = A2(
+	elm_explorations$webgl$WebGL$Texture$loadWith,
+	_Utils_update(
+		elm_explorations$webgl$WebGL$Texture$defaultOptions,
+		{minify: elm_explorations$webgl$WebGL$Texture$nearest}),
+	'/font.png');
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Task$Perform = function (a) {
+	return {$: 'Perform', a: a};
+};
+var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
+var elm$core$Task$map = F2(
+	function (func, taskA) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return elm$core$Task$succeed(
+					func(a));
+			},
+			taskA);
+	});
+var elm$core$Task$spawnCmd = F2(
+	function (router, _n0) {
+		var task = _n0.a;
+		return _Scheduler_spawn(
+			A2(
+				elm$core$Task$andThen,
+				elm$core$Platform$sendToApp(router),
+				task));
+	});
+var elm$core$Task$onEffects = F3(
+	function (router, commands, state) {
+		return A2(
+			elm$core$Task$map,
+			function (_n0) {
+				return _Utils_Tuple0;
+			},
+			elm$core$Task$sequence(
+				A2(
+					elm$core$List$map,
+					elm$core$Task$spawnCmd(router),
+					commands)));
+	});
+var elm$core$Task$onSelfMsg = F3(
+	function (_n0, _n1, _n2) {
+		return elm$core$Task$succeed(_Utils_Tuple0);
+	});
+var elm$core$Task$cmdMap = F2(
+	function (tagger, _n0) {
+		var task = _n0.a;
+		return elm$core$Task$Perform(
+			A2(elm$core$Task$map, tagger, task));
+	});
+_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
+var elm$core$Task$command = _Platform_leaf('Task');
+var elm$core$Task$onError = _Scheduler_onError;
+var elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(
+					elm$core$Task$onError,
+					A2(
+						elm$core$Basics$composeL,
+						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+						elm$core$Result$Err),
+					A2(
+						elm$core$Task$andThen,
+						A2(
+							elm$core$Basics$composeL,
+							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+							elm$core$Result$Ok),
+						task))));
+	});
+var author$project$F_Update$loadTextures = A2(
+	elm$core$Task$attempt,
+	A2(elm$core$Basics$composeR, elm$core$Result$toMaybe, author$project$B_Message$TexturesLoaded),
+	A3(elm$core$Task$map2, author$project$A_Model$Textures, author$project$Render$Image$loadTexture, author$project$Render$Text$loadTexture));
 var author$project$ListUtil$enumerate = elm$core$List$indexedMap(elm$core$Tuple$pair);
 var elm$core$Array$fromListHelp = F3(
 	function (list, nodeList, nodeListSize) {
@@ -5518,11 +8575,6 @@ var elm$core$Array$get = F2(
 			A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, tail)) : elm$core$Maybe$Just(
 			A3(elm$core$Array$getHelp, startShift, index, tree)));
 	});
-var elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var author$project$ListUtil$get = function (index) {
 	return A2(
 		elm$core$Basics$composeR,
@@ -5539,20 +8591,6 @@ var elm$core$List$filter = F2(
 				}),
 			_List_Nil,
 			list);
-	});
-var elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
 	});
 var author$project$ListUtil$findIndex = F2(
 	function (target, list) {
@@ -5586,8 +8624,8 @@ var elm$core$Maybe$withDefault = F2(
 	});
 var author$project$F_Update$update = F2(
 	function (msg, model) {
-		var updateActiveGame = F2(
-			function (playerInfo, activeGameInfo) {
+		var updateActiveGame = F5(
+			function (renderParameters, textures, playerInfo, activeGameInfo, cmd) {
 				var playerId = A2(
 					elm$core$Maybe$withDefault,
 					-1,
@@ -5602,21 +8640,23 @@ var author$project$F_Update$update = F2(
 							playerCount: activeGameInfo.playerCount,
 							playerHand: playerInfo.cards,
 							playerId: playerId,
-							playerName: playerInfo.playerName
+							playerName: playerInfo.playerName,
+							renderParameters: renderParameters,
+							textures: textures
 						}),
-					elm$core$Platform$Cmd$none);
+					cmd);
 			});
 		var noUpdate = _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
 		var decodeWsMessage = F2(
 			function (m, f) {
-				var _n5 = A2(elm$core$Debug$log, 'message', m);
-				var _n6 = author$project$Data$Decode$decodeToPlayer(m);
-				if (_n6.$ === 'Ok') {
-					var decodedMsg = _n6.a;
+				var _n7 = A2(elm$core$Debug$log, 'message', m);
+				var _n8 = author$project$Data$Decode$decodeToPlayer(m);
+				if (_n8.$ === 'Ok') {
+					var decodedMsg = _n8.a;
 					return f(
 						A2(elm$core$Debug$log, 'decoded message', decodedMsg));
 				} else {
-					var e = _n6.a;
+					var e = _n8.a;
 					return noUpdate;
 				}
 			});
@@ -5634,7 +8674,7 @@ var author$project$F_Update$update = F2(
 								} else {
 									var playerInfo = decodedMsg.a;
 									var activeGameInfo = decodedMsg.b;
-									return A2(updateActiveGame, playerInfo, activeGameInfo);
+									return A5(updateActiveGame, gameModel.renderParameters, gameModel.textures, playerInfo, activeGameInfo, elm$core$Platform$Cmd$none);
 								}
 							});
 					case 'NewGame':
@@ -5643,13 +8683,43 @@ var author$project$F_Update$update = F2(
 						return noUpdate;
 					case 'JoinGame':
 						return noUpdate;
-					default:
+					case 'PerformAction':
 						var action = gameMsg.a;
 						return _Utils_Tuple2(
 							model,
 							author$project$Websocket$send(
 								author$project$Data$Encode$encodeFromPlayer(
 									author$project$C_Data$Action(action))));
+					case 'RenderParametersLoaded':
+						var maybeRp = gameMsg.a;
+						if (maybeRp.$ === 'Just') {
+							var rp = maybeRp.a;
+							return _Utils_Tuple2(
+								author$project$A_Model$InGame(
+									_Utils_update(
+										gameModel,
+										{
+											renderParameters: elm$core$Maybe$Just(rp)
+										})),
+								elm$core$Platform$Cmd$none);
+						} else {
+							return noUpdate;
+						}
+					default:
+						var maybeT = gameMsg.a;
+						if (maybeT.$ === 'Just') {
+							var t = maybeT.a;
+							return _Utils_Tuple2(
+								author$project$A_Model$InGame(
+									_Utils_update(
+										gameModel,
+										{
+											textures: elm$core$Maybe$Just(t)
+										})),
+								elm$core$Platform$Cmd$none);
+						} else {
+							return noUpdate;
+						}
 				}
 			});
 		var updateLobby = F2(
@@ -5672,7 +8742,15 @@ var author$project$F_Update$update = F2(
 								} else {
 									var playerInfo = decodedMsg.a;
 									var activeGameInfo = decodedMsg.b;
-									return A2(updateActiveGame, playerInfo, activeGameInfo);
+									return A5(
+										updateActiveGame,
+										elm$core$Maybe$Nothing,
+										elm$core$Maybe$Nothing,
+										playerInfo,
+										activeGameInfo,
+										elm$core$Platform$Cmd$batch(
+											_List_fromArray(
+												[author$project$F_Update$loadRenderParameters, author$project$F_Update$loadTextures])));
 								}
 							});
 					case 'NewGame':
@@ -5694,8 +8772,14 @@ var author$project$F_Update$update = F2(
 								author$project$Data$Encode$encodeFromPlayer(
 									author$project$C_Data$Connect(
 										A2(author$project$C_Data$ConnectInfo, gameName, lobbyModel.playerName)))));
-					default:
+					case 'PerformAction':
 						var a = lobbyMsg.a;
+						return noUpdate;
+					case 'RenderParametersLoaded':
+						var rp = lobbyMsg.a;
+						return noUpdate;
+					default:
+						var t = lobbyMsg.a;
 						return noUpdate;
 				}
 			});
@@ -5829,11 +8913,28 @@ var author$project$A_Model$GetResource = F3(
 		return {$: 'GetResource', a: a, b: b, c: c};
 	});
 var author$project$A_Model$Validate = {$: 'Validate'};
-var elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
+var elm$core$List$repeatHelp = F3(
+	function (result, n, value) {
+		repeatHelp:
+		while (true) {
+			if (n <= 0) {
+				return result;
+			} else {
+				var $temp$result = A2(elm$core$List$cons, value, result),
+					$temp$n = n - 1,
+					$temp$value = value;
+				result = $temp$result;
+				n = $temp$n;
+				value = $temp$value;
+				continue repeatHelp;
+			}
+		}
 	});
+var elm$core$List$repeat = F2(
+	function (n, value) {
+		return A3(elm$core$List$repeatHelp, _List_Nil, n, value);
+	});
+var author$project$A_Model$emptyResourceArray = A2(elm$core$List$repeat, 7, 0);
 var elm$core$Basics$not = _Basics_not;
 var elm$core$List$any = F2(
 	function (isOkay, list) {
@@ -5886,7 +8987,6 @@ var author$project$Views$Game$ResourceAttributes = F3(
 	});
 var author$project$Views$Game$adjacentPlayerNames = _List_fromArray(
 	['Joueur de gauche', 'Vous', 'Joueur de droite']);
-var author$project$Views$Game$nothing = A2(elm$html$Html$div, _List_Nil, _List_Nil);
 var author$project$Views$Game$resourceNames = _List_fromArray(
 	['Argile', 'Bois', 'Minerai', 'Pierre', 'Verre', 'Papyrus', 'Tissu']);
 var elm$core$List$append = F2(
@@ -5897,10 +8997,28 @@ var elm$core$List$append = F2(
 			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
 		}
 	});
+var author$project$Views$Game$individualResourceNames = function (resourceArray) {
+	var addResourceType = F2(
+		function (_n0, resourceList) {
+			var name = _n0.a;
+			var quantity = _n0.b;
+			return A2(
+				elm$core$List$append,
+				resourceList,
+				A2(elm$core$List$repeat, quantity, name));
+		});
+	return A3(
+		elm$core$List$foldl,
+		addResourceType,
+		_List_Nil,
+		A3(elm$core$List$map2, elm$core$Tuple$pair, author$project$Views$Game$resourceNames, resourceArray));
+};
+var author$project$Views$Game$nothing = A2(elm$html$Html$div, _List_Nil, _List_Nil);
 var elm$core$List$concat = function (lists) {
 	return A3(elm$core$List$foldr, elm$core$List$append, _List_Nil, lists);
 };
 var elm$core$List$map3 = _List_map3;
+var elm$core$List$map4 = _List_map4;
 var elm$core$Maybe$map = F2(
 	function (f, maybe) {
 		if (maybe.$ === 'Just') {
@@ -5916,15 +9034,24 @@ var elm$html$Html$i = _VirtualDom_node('i');
 var elm$html$Html$table = _VirtualDom_node('table');
 var elm$html$Html$td = _VirtualDom_node('td');
 var elm$html$Html$tr = _VirtualDom_node('tr');
+var elm$json$Json$Encode$bool = _Json_wrap;
+var elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$bool(bool));
+	});
+var elm$html$Html$Attributes$disabled = elm$html$Html$Attributes$boolProperty('disabled');
 var author$project$Views$Game$viewResourceChoice = F3(
 	function (gameModel, state, data) {
-		var viewProduction = F3(
-			function (resourceCosts, production, msg) {
+		var viewProduction = F4(
+			function (resourceCosts, production, msg, ra) {
 				var resourceButtons = A2(
 					elm$core$List$map,
-					function (_n3) {
-						var i = _n3.a;
-						var attr = _n3.b;
+					function (_n6) {
+						var i = _n6.a;
+						var attr = _n6.b;
 						return A2(
 							elm$html$Html$td,
 							_List_Nil,
@@ -5936,7 +9063,9 @@ var author$project$Views$Game$viewResourceChoice = F3(
 										[
 											elm$html$Html$Events$onClick(
 											author$project$B_Message$PerformAction(
-												msg(i + 1)))
+												msg(i + 1))),
+											elm$html$Html$Attributes$disabled(
+											_Utils_eq(ra, i + 1))
 										]),
 									_List_fromArray(
 										[
@@ -5947,9 +9076,9 @@ var author$project$Views$Game$viewResourceChoice = F3(
 					},
 					A2(
 						elm$core$List$filter,
-						function (_n2) {
-							var i = _n2.a;
-							var attr = _n2.b;
+						function (_n5) {
+							var i = _n5.a;
+							var attr = _n5.b;
 							return attr.production > 0;
 						},
 						A2(
@@ -5980,7 +9109,8 @@ var author$project$Views$Game$viewResourceChoice = F3(
 												[
 													elm$html$Html$Events$onClick(
 													author$project$B_Message$PerformAction(
-														msg(0)))
+														msg(0))),
+													elm$html$Html$Attributes$disabled(!ra)
 												]),
 											_List_fromArray(
 												[
@@ -5990,8 +9120,8 @@ var author$project$Views$Game$viewResourceChoice = F3(
 								resourceButtons))
 						]));
 			});
-		var viewPlayer = F4(
-			function (resourceCosts, productions, playerName, msg) {
+		var viewPlayer = F5(
+			function (resourceCosts, productions, playerName, msg, resourceAllocation) {
 				return A2(
 					elm$html$Html$td,
 					_List_Nil,
@@ -6011,14 +9141,17 @@ var author$project$Views$Game$viewResourceChoice = F3(
 								A2(
 								elm$core$List$indexedMap,
 								F2(
-									function (i, production) {
-										return A3(
+									function (i, _n4) {
+										var production = _n4.a;
+										var ra = _n4.b;
+										return A4(
 											viewProduction,
 											resourceCosts,
 											production,
-											msg(i));
+											msg(i),
+											ra);
 									}),
-								productions)
+								A3(elm$core$List$map2, elm$core$Tuple$pair, productions, resourceAllocation))
 							])));
 			});
 		var viewCard = function (card) {
@@ -6038,8 +9171,28 @@ var author$project$Views$Game$viewResourceChoice = F3(
 					]));
 		};
 		var verdictInfo = function () {
-			var _n1 = author$project$A_Model$isVerdictOk(data.verdict);
-			if (_n1) {
+			var missingResources = _Utils_eq(data.verdict.missingResources, author$project$A_Model$emptyResourceArray) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(
+				'Il manque ces ressources: ' + A2(
+					elm$core$String$join,
+					' ',
+					author$project$Views$Game$individualResourceNames(data.verdict.missingResources)));
+			var missingGold = function () {
+				var _n3 = data.verdict.missingGold;
+				if (!_n3) {
+					return elm$core$Maybe$Nothing;
+				} else {
+					var i = _n3;
+					return elm$core$Maybe$Just(
+						'Il vous manque ' + (elm$core$String$fromInt(i) + 'or'));
+				}
+			}();
+			var extraResources = _Utils_eq(data.verdict.extraResources, author$project$A_Model$emptyResourceArray) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(
+				'Ces ressources sont en trop: ' + A2(
+					elm$core$String$join,
+					' ',
+					author$project$Views$Game$individualResourceNames(data.verdict.extraResources)));
+			var _n2 = author$project$A_Model$isVerdictOk(data.verdict);
+			if (_n2) {
 				return A2(
 					elm$html$Html$button,
 					_List_fromArray(
@@ -6053,12 +9206,36 @@ var author$project$Views$Game$viewResourceChoice = F3(
 						]));
 			} else {
 				return A2(
-					elm$html$Html$p,
+					elm$html$Html$div,
 					_List_Nil,
-					_List_fromArray(
-						[
-							elm$html$Html$text('Vous ne pouvez pas jouer cette carte')
-						]));
+					A2(
+						elm$core$List$append,
+						_List_fromArray(
+							[
+								A2(
+								elm$html$Html$p,
+								_List_Nil,
+								_List_fromArray(
+									[
+										elm$html$Html$text('Vous ne pouvez pas jouer cette carte')
+									]))
+							]),
+						A2(
+							elm$core$List$map,
+							function (verdictExplanation) {
+								return A2(
+									elm$html$Html$p,
+									_List_Nil,
+									_List_fromArray(
+										[
+											elm$html$Html$text(verdictExplanation)
+										]));
+							},
+							A2(
+								elm$core$List$filterMap,
+								elm$core$Basics$identity,
+								_List_fromArray(
+									[missingResources, extraResources, missingGold])))));
 			}
 		}();
 		var playerData = A2(author$project$ListUtil$get, gameModel.playerId, state.game.players);
@@ -6073,7 +9250,7 @@ var author$project$Views$Game$viewResourceChoice = F3(
 				[
 					elm$html$Html$text('Jouer une autre carte')
 				]));
-		var cancelAndConfirm = A2(
+		var validateAndCancel = A2(
 			elm$html$Html$div,
 			_List_Nil,
 			_List_fromArray(
@@ -6101,7 +9278,7 @@ var author$project$Views$Game$viewResourceChoice = F3(
 						elm$core$Maybe$map,
 						viewCard,
 						A2(author$project$ListUtil$get, data.cardIndex, state.playerHand))),
-					cancelAndConfirm,
+					validateAndCancel,
 					function (x) {
 					return A2(
 						elm$html$Html$table,
@@ -6115,25 +9292,31 @@ var author$project$Views$Game$viewResourceChoice = F3(
 						elm$core$List$indexedMap,
 						F2(
 							function (i, _n0) {
-								var c = _n0.a;
-								var p = _n0.b;
-								var n = _n0.c;
-								return A4(
+								var _n1 = _n0.a;
+								var c = _n1.a;
+								var p = _n1.b;
+								var n = _n1.c;
+								var s = _n0.b;
+								return A5(
 									viewPlayer,
 									c,
 									p,
 									n,
-									author$project$A_Model$GetResource(i));
+									author$project$A_Model$GetResource(i),
+									s);
 							}),
-						A4(
-							elm$core$List$map3,
-							F3(
-								function (a, b, c) {
-									return _Utils_Tuple3(a, b, c);
+						A5(
+							elm$core$List$map4,
+							F4(
+								function (a, b, c, s) {
+									return _Utils_Tuple2(
+										_Utils_Tuple3(a, b, c),
+										s);
 								}),
 							state.playerData.resourceCosts,
 							state.playerData.resourceProductions,
-							author$project$Views$Game$adjacentPlayerNames)))
+							author$project$Views$Game$adjacentPlayerNames,
+							data.resourceAllocation)))
 				]));
 	});
 var author$project$A_Model$Unvalidate = {$: 'Unvalidate'};
@@ -6196,24 +9379,6 @@ var author$project$Views$Game$viewPlay = F2(
 				return A3(author$project$Views$Game$viewTurnStatus, gameModel, state, data);
 		}
 	});
-var elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _n0 = f(mx);
-		if (_n0.$ === 'Just') {
-			var x = _n0.a;
-			return A2(elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
-	});
 var author$project$Views$Game$viewActiveGame = F2(
 	function (gameModel, state) {
 		return A2(
@@ -6264,6 +9429,559 @@ var author$project$Views$Game$viewConnectedPlayers = function (connectedPlayers)
 					connectedPlayers))
 			]));
 };
+var elm_explorations$webgl$WebGL$Internal$Blend = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return {$: 'Blend', a: a, b: b, c: c, d: d, e: e, f: f, g: g, h: h, i: i, j: j};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+var elm_explorations$webgl$WebGL$Settings$Blend$custom = function (_n0) {
+	var r = _n0.r;
+	var g = _n0.g;
+	var b = _n0.b;
+	var a = _n0.a;
+	var color = _n0.color;
+	var alpha = _n0.alpha;
+	var expand = F2(
+		function (_n1, _n2) {
+			var eq1 = _n1.a;
+			var f11 = _n1.b;
+			var f12 = _n1.c;
+			var eq2 = _n2.a;
+			var f21 = _n2.b;
+			var f22 = _n2.c;
+			return elm_explorations$webgl$WebGL$Internal$Blend(eq1)(f11)(f12)(eq2)(f21)(f22)(r)(g)(b)(a);
+		});
+	return A2(expand, color, alpha);
+};
+var elm_explorations$webgl$WebGL$Settings$Blend$Blender = F3(
+	function (a, b, c) {
+		return {$: 'Blender', a: a, b: b, c: c};
+	});
+var elm_explorations$webgl$WebGL$Settings$Blend$customAdd = F2(
+	function (_n0, _n1) {
+		var factor1 = _n0.a;
+		var factor2 = _n1.a;
+		return A3(elm_explorations$webgl$WebGL$Settings$Blend$Blender, 32774, factor1, factor2);
+	});
+var elm_explorations$webgl$WebGL$Settings$Blend$add = F2(
+	function (factor1, factor2) {
+		return elm_explorations$webgl$WebGL$Settings$Blend$custom(
+			{
+				a: 0,
+				alpha: A2(elm_explorations$webgl$WebGL$Settings$Blend$customAdd, factor1, factor2),
+				b: 0,
+				color: A2(elm_explorations$webgl$WebGL$Settings$Blend$customAdd, factor1, factor2),
+				g: 0,
+				r: 0
+			});
+	});
+var elm_explorations$webgl$WebGL$Settings$Blend$Factor = function (a) {
+	return {$: 'Factor', a: a};
+};
+var elm_explorations$webgl$WebGL$Settings$Blend$oneMinusSrcAlpha = elm_explorations$webgl$WebGL$Settings$Blend$Factor(771);
+var elm_explorations$webgl$WebGL$Settings$Blend$srcAlpha = elm_explorations$webgl$WebGL$Settings$Blend$Factor(770);
+var elm_explorations$webgl$WebGL$Internal$DepthTest = F4(
+	function (a, b, c, d) {
+		return {$: 'DepthTest', a: a, b: b, c: c, d: d};
+	});
+var elm_explorations$webgl$WebGL$Settings$DepthTest$less = function (_n0) {
+	var write = _n0.write;
+	var near = _n0.near;
+	var far = _n0.far;
+	return A4(elm_explorations$webgl$WebGL$Internal$DepthTest, 513, write, near, far);
+};
+var elm_explorations$webgl$WebGL$Settings$DepthTest$default = elm_explorations$webgl$WebGL$Settings$DepthTest$less(
+	{far: 1, near: 0, write: true});
+var author$project$Render$entityParameters = _List_fromArray(
+	[
+		A2(elm_explorations$webgl$WebGL$Settings$Blend$add, elm_explorations$webgl$WebGL$Settings$Blend$srcAlpha, elm_explorations$webgl$WebGL$Settings$Blend$oneMinusSrcAlpha),
+		elm_explorations$webgl$WebGL$Settings$DepthTest$default
+	]);
+var author$project$Render$Image$fragmentShader = {
+	src: '\n    uniform sampler2D texture;\n    precision mediump float;\n    varying vec2 vtexturePos;\n\n    void main() {\n      gl_FragColor = texture2D(texture, vtexturePos);\n    }\n  ',
+	attributes: {},
+	uniforms: {texture: 'texture'}
+};
+var author$project$Render$Image$vertexShader = {
+	src: '\n    attribute vec3 position;\n    attribute vec2 texturePos;\n    uniform mat4 perspective;\n    varying vec2 vtexturePos;\n\n    void main() {\n      gl_Position = perspective * vec4(position, 1.0);\n      vtexturePos = texturePos;\n    }\n  ',
+	attributes: {position: 'position', texturePos: 'texturePos'},
+	uniforms: {perspective: 'perspective'}
+};
+var author$project$Render$Text$fragmentShader = {
+	src: '\n    uniform sampler2D texture;\n    precision lowp float;\n    varying vec3 vcolor;\n    precision mediump float;\n    varying vec2 vtexturePos;\n    float buffer = 0.5;\n    float gamma = 0.2;\n\n    void main() {\n      float dist = texture2D(texture, vtexturePos).a;\n      float alpha = smoothstep(buffer - gamma, buffer + gamma, dist);\n      gl_FragColor = vec4(vcolor.rgb, alpha);\n    }\n  ',
+	attributes: {},
+	uniforms: {texture: 'texture'}
+};
+var author$project$Render$Text$vertexShader = {
+	src: '\n    attribute vec3 color;\n    attribute vec3 position;\n    attribute vec2 texturePos;\n    uniform mat4 perspective;\n    varying vec3 vcolor;\n    varying vec2 vtexturePos;\n\n    void main() {\n      gl_Position = perspective * vec4(position, 1.0);\n      vcolor = color;\n      vtexturePos = texturePos;\n    }\n  ',
+	attributes: {color: 'color', position: 'position', texturePos: 'texturePos'},
+	uniforms: {perspective: 'perspective'}
+};
+var elm_explorations$linear_algebra$Math$Matrix4$makeOrtho2D = _MJS_m4x4makeOrtho2D;
+var elm_explorations$webgl$WebGL$Internal$disableSetting = F2(
+	function (cache, setting) {
+		switch (setting.$) {
+			case 'Blend':
+				return _WebGL_disableBlend(cache);
+			case 'DepthTest':
+				return _WebGL_disableDepthTest(cache);
+			case 'StencilTest':
+				return _WebGL_disableStencilTest(cache);
+			case 'Scissor':
+				return _WebGL_disableScissor(cache);
+			case 'ColorMask':
+				return _WebGL_disableColorMask(cache);
+			case 'CullFace':
+				return _WebGL_disableCullFace(cache);
+			case 'PolygonOffset':
+				return _WebGL_disablePolygonOffset(cache);
+			case 'SampleCoverage':
+				return _WebGL_disableSampleCoverage(cache);
+			default:
+				return _WebGL_disableSampleAlphaToCoverage(cache);
+		}
+	});
+var elm_explorations$webgl$WebGL$Internal$enableOption = F2(
+	function (ctx, option) {
+		switch (option.$) {
+			case 'Alpha':
+				return A2(_WebGL_enableAlpha, ctx, option);
+			case 'Depth':
+				return A2(_WebGL_enableDepth, ctx, option);
+			case 'Stencil':
+				return A2(_WebGL_enableStencil, ctx, option);
+			case 'Antialias':
+				return A2(_WebGL_enableAntialias, ctx, option);
+			case 'ClearColor':
+				return A2(_WebGL_enableClearColor, ctx, option);
+			default:
+				return A2(_WebGL_enablePreserveDrawingBuffer, ctx, option);
+		}
+	});
+var elm_explorations$webgl$WebGL$Internal$enableSetting = F2(
+	function (gl, setting) {
+		switch (setting.$) {
+			case 'Blend':
+				return A2(_WebGL_enableBlend, gl, setting);
+			case 'DepthTest':
+				return A2(_WebGL_enableDepthTest, gl, setting);
+			case 'StencilTest':
+				return A2(_WebGL_enableStencilTest, gl, setting);
+			case 'Scissor':
+				return A2(_WebGL_enableScissor, gl, setting);
+			case 'ColorMask':
+				return A2(_WebGL_enableColorMask, gl, setting);
+			case 'CullFace':
+				return A2(_WebGL_enableCullFace, gl, setting);
+			case 'PolygonOffset':
+				return A2(_WebGL_enablePolygonOffset, gl, setting);
+			case 'SampleCoverage':
+				return A2(_WebGL_enableSampleCoverage, gl, setting);
+			default:
+				return A2(_WebGL_enableSampleAlphaToCoverage, gl, setting);
+		}
+	});
+var elm_explorations$webgl$WebGL$entityWith = _WebGL_entity;
+var elm_explorations$webgl$WebGL$Mesh3 = F2(
+	function (a, b) {
+		return {$: 'Mesh3', a: a, b: b};
+	});
+var elm_explorations$webgl$WebGL$triangles = elm_explorations$webgl$WebGL$Mesh3(
+	{elemSize: 3, indexSize: 0, mode: 4});
+var author$project$Render$toEntities = F2(
+	function (textures, parts) {
+		var perspective = A4(elm_explorations$linear_algebra$Math$Matrix4$makeOrtho2D, 0.0, 16 / 9, 0.0, 1.0);
+		var drawText = A5(
+			elm_explorations$webgl$WebGL$entityWith,
+			author$project$Render$entityParameters,
+			author$project$Render$Text$vertexShader,
+			author$project$Render$Text$fragmentShader,
+			elm_explorations$webgl$WebGL$triangles(
+				elm$core$List$concat(
+					A2(
+						elm$core$List$map,
+						function (p) {
+							return p.text;
+						},
+						parts))),
+			{perspective: perspective, texture: textures.text});
+		var drawImages = A5(
+			elm_explorations$webgl$WebGL$entityWith,
+			author$project$Render$entityParameters,
+			author$project$Render$Image$vertexShader,
+			author$project$Render$Image$fragmentShader,
+			elm_explorations$webgl$WebGL$triangles(
+				elm$core$List$concat(
+					A2(
+						elm$core$List$map,
+						function (p) {
+							return p.images;
+						},
+						parts))),
+			{perspective: perspective, texture: textures.atlas});
+		return _List_fromArray(
+			[drawImages, drawText]);
+	});
+var author$project$Render$Image$Vertex = F2(
+	function (position, texturePos) {
+		return {position: position, texturePos: texturePos};
+	});
+var author$project$Render$VertexList$fromFace = F4(
+	function (a, b, c, d) {
+		return _List_fromArray(
+			[
+				_Utils_Tuple3(a, b, c),
+				_Utils_Tuple3(c, d, a)
+			]);
+	});
+var elm_explorations$linear_algebra$Math$Vector2$vec2 = _MJS_v2;
+var elm_explorations$linear_algebra$Math$Vector3$vec3 = _MJS_v3;
+var author$project$Render$Image$render = F2(
+	function (atlas, texture) {
+		var renderWithInfo = function (imageInfo) {
+			var xy_tl = A3(elm_explorations$linear_algebra$Math$Vector3$vec3, 0.0, 1.0, 0.0);
+			var xy_bl = A3(elm_explorations$linear_algebra$Math$Vector3$vec3, 0.0, 0.0, 0.0);
+			var width = imageInfo.x2 - imageInfo.x1;
+			var v = F2(
+				function (uv, xy) {
+					return A2(author$project$Render$Image$Vertex, xy, uv);
+				});
+			var height = imageInfo.y2 - imageInfo.y1;
+			var xy_br = A3(elm_explorations$linear_algebra$Math$Vector3$vec3, (1.0 / height) * width, 0.0, 0.0);
+			var xy_tr = A3(elm_explorations$linear_algebra$Math$Vector3$vec3, (1.0 / height) * width, 1.0, 0.0);
+			var atlasWidth = atlas.common.width;
+			var atlasHeight = atlas.common.height;
+			var uv_bl = A2(elm_explorations$linear_algebra$Math$Vector2$vec2, imageInfo.x1 / atlasWidth, imageInfo.y2 / atlasHeight);
+			var d = A2(v, uv_bl, xy_bl);
+			var uv_br = A2(elm_explorations$linear_algebra$Math$Vector2$vec2, imageInfo.x2 / atlasWidth, imageInfo.y2 / atlasHeight);
+			var c = A2(v, uv_br, xy_br);
+			var uv_tl = A2(elm_explorations$linear_algebra$Math$Vector2$vec2, imageInfo.x1 / atlasWidth, imageInfo.y1 / atlasHeight);
+			var uv_tr = A2(elm_explorations$linear_algebra$Math$Vector2$vec2, imageInfo.x2 / atlasWidth, imageInfo.y1 / atlasHeight);
+			var b = A2(v, uv_tr, xy_tr);
+			var a = A2(v, uv_tl, xy_tl);
+			return A4(author$project$Render$VertexList$fromFace, a, b, c, d);
+		};
+		return A2(
+			elm$core$Maybe$withDefault,
+			_List_Nil,
+			A2(
+				elm$core$Maybe$map,
+				renderWithInfo,
+				A2(elm$core$Dict$get, texture, atlas.textures)));
+	});
+var author$project$Render$VertexList$tripletMap = F2(
+	function (f, _n0) {
+		var a = _n0.a;
+		var b = _n0.b;
+		var c = _n0.c;
+		return _Utils_Tuple3(
+			f(a),
+			f(b),
+			f(c));
+	});
+var author$project$Render$VertexList$map = F2(
+	function (f, input) {
+		return A2(
+			elm$core$List$map,
+			author$project$Render$VertexList$tripletMap(f),
+			input);
+	});
+var elm_explorations$linear_algebra$Math$Matrix4$transform = _MJS_v3mul4x4;
+var author$project$Render$VertexList$transformPosition = F2(
+	function (f, input) {
+		return A2(
+			author$project$Render$VertexList$map,
+			function (v) {
+				return _Utils_update(
+					v,
+					{
+						position: A2(elm_explorations$linear_algebra$Math$Matrix4$transform, f, v.position)
+					});
+			},
+			input);
+	});
+var elm_explorations$linear_algebra$Math$Matrix4$makeScale3 = _MJS_m4x4makeScale3;
+var elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3 = _MJS_m4x4makeTranslate3;
+var elm_explorations$linear_algebra$Math$Matrix4$mul = _MJS_m4x4mul;
+var author$project$Views$Game$viewHand = F2(
+	function (renderParameters, cards) {
+		var maxCardWidth = 3.2;
+		var cardWidth = 3.9 / 9;
+		var cardPosition = 4.1 / 9;
+		var cardHeight = cardWidth * (1 / maxCardWidth);
+		var scale = A3(elm_explorations$linear_algebra$Math$Matrix4$makeScale3, cardHeight, cardHeight, cardHeight);
+		var translate = function (i) {
+			return A3(elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3, cardPosition, i * cardHeight, 0.0);
+		};
+		var transformationMatrix = function (i) {
+			return A2(
+				elm_explorations$linear_algebra$Math$Matrix4$mul,
+				translate(i),
+				scale);
+		};
+		var transform = F2(
+			function (i, card) {
+				return A2(
+					author$project$Render$VertexList$transformPosition,
+					transformationMatrix(i),
+					card);
+			});
+		return {
+			images: elm$core$List$concat(
+				A2(
+					elm$core$List$indexedMap,
+					transform,
+					A2(
+						elm$core$List$map,
+						author$project$Render$Image$render(renderParameters.atlas),
+						A2(
+							elm$core$List$map,
+							function ($) {
+								return $.name;
+							},
+							cards)))),
+			text: _List_Nil
+		};
+	});
+var author$project$Render$transformPosition = F2(
+	function (f, sp) {
+		return {
+			images: A2(author$project$Render$VertexList$transformPosition, f, sp.images),
+			text: A2(author$project$Render$VertexList$transformPosition, f, sp.text)
+		};
+	});
+var author$project$Views$Game$BlueRedYellow = {$: 'BlueRedYellow'};
+var author$project$Views$Game$BrownGray = {$: 'BrownGray'};
+var author$project$Views$Game$GreenPurple = {$: 'GreenPurple'};
+var author$project$Views$Game$groupFromColor = function (color) {
+	switch (color.$) {
+		case 'Blue':
+			return author$project$Views$Game$BlueRedYellow;
+		case 'Brown':
+			return author$project$Views$Game$BrownGray;
+		case 'Gray':
+			return author$project$Views$Game$BrownGray;
+		case 'Green':
+			return author$project$Views$Game$GreenPurple;
+		case 'Purple':
+			return author$project$Views$Game$GreenPurple;
+		case 'Red':
+			return author$project$Views$Game$BlueRedYellow;
+		default:
+			return author$project$Views$Game$BlueRedYellow;
+	}
+};
+var author$project$Views$Game$viewPlayerData = F2(
+	function (renderParameters, playerData) {
+		var otherColumnWidth = 2.4;
+		var firstColumnWidth = 3.2;
+		var columnInterspace = 0.5;
+		var horizontalMargin = columnInterspace / 2.0;
+		var totalWidth = (((2 * horizontalMargin) + (2 * columnInterspace)) + firstColumnWidth) + (2 * otherColumnWidth);
+		var cardInterspace = 0.0;
+		var cardHeight = 1.0;
+		var drawCard = F3(
+			function (group, position, name) {
+				var verticalOffset = 1.0 - ((((position + 1) * cardHeight) + (position * cardInterspace)) / totalWidth);
+				var unscaledHorizontalOffset = function () {
+					switch (group.$) {
+						case 'GreenPurple':
+							return horizontalMargin;
+						case 'BlueRedYellow':
+							return (horizontalMargin + firstColumnWidth) + columnInterspace;
+						default:
+							return ((horizontalMargin + firstColumnWidth) + (2 * columnInterspace)) + otherColumnWidth;
+					}
+				}();
+				var translate = A3(elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3, unscaledHorizontalOffset / totalWidth, verticalOffset, 0.0);
+				var scalingFactor = 1.0 / totalWidth;
+				var scale = A3(elm_explorations$linear_algebra$Math$Matrix4$makeScale3, scalingFactor, scalingFactor, scalingFactor);
+				var transformationMatrix = A2(elm_explorations$linear_algebra$Math$Matrix4$mul, translate, scale);
+				return A2(
+					author$project$Render$VertexList$transformPosition,
+					transformationMatrix,
+					A2(
+						elm$core$Debug$log,
+						'rendered image',
+						A2(author$project$Render$Image$render, renderParameters.atlas, name)));
+			});
+		var drawCardGroup = function (group) {
+			return elm$core$List$concat(
+				A2(
+					elm$core$List$indexedMap,
+					F2(
+						function (i, c) {
+							return A3(drawCard, group, i, c.name);
+						}),
+					A2(
+						elm$core$List$filter,
+						function (c) {
+							return _Utils_eq(
+								author$project$Views$Game$groupFromColor(c.color),
+								group);
+						},
+						playerData.boardCards)));
+		};
+		return {
+			images: elm$core$List$concat(
+				_List_fromArray(
+					[
+						drawCardGroup(author$project$Views$Game$GreenPurple),
+						drawCardGroup(author$project$Views$Game$BlueRedYellow),
+						drawCardGroup(author$project$Views$Game$BrownGray)
+					])),
+			text: _List_Nil
+		};
+	});
+var elm$core$Basics$modBy = _Basics_modBy;
+var author$project$Views$Game$viewPlayers = F3(
+	function (renderParameters, gameModel, ags) {
+		var screenWidth = 16 / 9;
+		var boardSide = 4 / 9;
+		var scaleBoard = A3(elm_explorations$linear_algebra$Math$Matrix4$makeScale3, boardSide, boardSide, boardSide);
+		var drawCurrentPlayer = function (playerData) {
+			return A2(
+				author$project$Render$transformPosition,
+				A2(
+					elm_explorations$linear_algebra$Math$Matrix4$mul,
+					A3(elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3, screenWidth - (2 * boardSide), 0.0, 0.0),
+					scaleBoard),
+				A2(author$project$Views$Game$viewPlayerData, renderParameters, playerData));
+		};
+		var drawLeftPlayer = function (playerData) {
+			return A2(
+				author$project$Render$transformPosition,
+				scaleBoard,
+				A2(author$project$Views$Game$viewPlayerData, renderParameters, playerData));
+		};
+		var drawRightPlayer = function (playerData) {
+			return A2(
+				author$project$Render$transformPosition,
+				A2(
+					elm_explorations$linear_algebra$Math$Matrix4$mul,
+					A3(elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3, screenWidth - boardSide, 0.0, 0.0),
+					scaleBoard),
+				A2(author$project$Views$Game$viewPlayerData, renderParameters, playerData));
+		};
+		var drawUpperPlayer = F2(
+			function (position, playerData) {
+				var translate = A3(elm_explorations$linear_algebra$Math$Matrix4$makeTranslate3, position * boardSide, 1.0 - boardSide, 0.0);
+				var transformationMatrix = A2(elm_explorations$linear_algebra$Math$Matrix4$mul, translate, scaleBoard);
+				return A2(
+					author$project$Render$transformPosition,
+					transformationMatrix,
+					A2(author$project$Views$Game$viewPlayerData, renderParameters, playerData));
+			});
+		var drawPlayer = F2(
+			function (position, playerData) {
+				var relativePosition = A2(elm$core$Basics$modBy, gameModel.playerCount, position - gameModel.playerId);
+				var drawFunction = (!relativePosition) ? drawCurrentPlayer : ((relativePosition === 1) ? drawRightPlayer : (_Utils_eq(relativePosition, gameModel.playerCount - 1) ? drawLeftPlayer : drawUpperPlayer(5 - relativePosition)));
+				return drawFunction(playerData);
+			});
+		return A2(elm$core$List$indexedMap, drawPlayer, ags.game.players);
+	});
+var elm$core$Maybe$map2 = F3(
+	function (func, ma, mb) {
+		if (ma.$ === 'Nothing') {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var a = ma.a;
+			if (mb.$ === 'Nothing') {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var b = mb.a;
+				return elm$core$Maybe$Just(
+					A2(func, a, b));
+			}
+		}
+	});
+var elm$html$Html$Attributes$height = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'height',
+		elm$core$String$fromInt(n));
+};
+var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
+var elm$html$Html$Attributes$width = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'width',
+		elm$core$String$fromInt(n));
+};
+var elm_explorations$webgl$WebGL$Internal$Alpha = function (a) {
+	return {$: 'Alpha', a: a};
+};
+var elm_explorations$webgl$WebGL$alpha = elm_explorations$webgl$WebGL$Internal$Alpha;
+var elm_explorations$webgl$WebGL$Internal$Antialias = {$: 'Antialias'};
+var elm_explorations$webgl$WebGL$antialias = elm_explorations$webgl$WebGL$Internal$Antialias;
+var elm_explorations$webgl$WebGL$Internal$ClearColor = F4(
+	function (a, b, c, d) {
+		return {$: 'ClearColor', a: a, b: b, c: c, d: d};
+	});
+var elm_explorations$webgl$WebGL$clearColor = elm_explorations$webgl$WebGL$Internal$ClearColor;
+var elm_explorations$webgl$WebGL$Internal$Depth = function (a) {
+	return {$: 'Depth', a: a};
+};
+var elm_explorations$webgl$WebGL$depth = elm_explorations$webgl$WebGL$Internal$Depth;
+var elm_explorations$webgl$WebGL$toHtmlWith = F3(
+	function (options, attributes, entities) {
+		return A3(_WebGL_toHtml, options, attributes, entities);
+	});
+var author$project$Views$Game$viewScene = F2(
+	function (gameModel, ags) {
+		var _n0 = A3(elm$core$Maybe$map2, elm$core$Tuple$pair, gameModel.renderParameters, gameModel.textures);
+		if (_n0.$ === 'Just') {
+			var _n1 = _n0.a;
+			var renderParameters = _n1.a;
+			var textures = _n1.b;
+			var webglParameters = _List_fromArray(
+				[
+					elm_explorations$webgl$WebGL$alpha(true),
+					elm_explorations$webgl$WebGL$depth(1),
+					A4(elm_explorations$webgl$WebGL$clearColor, 0.6, 0.6, 0.6, 1.0),
+					elm_explorations$webgl$WebGL$antialias
+				]);
+			var canvasAttributes = _List_fromArray(
+				[
+					elm$html$Html$Attributes$width(1600),
+					elm$html$Html$Attributes$height(900),
+					A2(elm$html$Html$Attributes$style, 'display', 'block')
+				]);
+			return A3(
+				elm_explorations$webgl$WebGL$toHtmlWith,
+				webglParameters,
+				canvasAttributes,
+				A2(
+					author$project$Render$toEntities,
+					textures,
+					A2(
+						elm$core$Debug$log,
+						'triangles',
+						A2(
+							elm$core$List$cons,
+							A2(author$project$Views$Game$viewHand, renderParameters, ags.playerHand),
+							A3(author$project$Views$Game$viewPlayers, renderParameters, gameModel, ags)))));
+		} else {
+			return elm$html$Html$text('No render :(');
+		}
+	});
 var elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
 		if (maybeValue.$ === 'Just') {
@@ -6320,7 +10038,14 @@ var author$project$Views$Game$viewGame = function (gameModel) {
 					gameModel.game)));
 		if (state.$ === 'Just') {
 			var s = state.a;
-			return A2(author$project$Views$Game$viewActiveGame, gameModel, s);
+			return A2(
+				elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(author$project$Views$Game$viewActiveGame, gameModel, s),
+						A2(author$project$Views$Game$viewScene, gameModel, s)
+					]));
 		} else {
 			return A2(elm$html$Html$div, _List_Nil, _List_Nil);
 		}
@@ -6533,8 +10258,13 @@ var author$project$B_Message$WsMessage = function (a) {
 	return {$: 'WsMessage', a: a};
 };
 var author$project$Websocket$listen = _Platform_incomingPort('listen', elm$json$Json$Decode$string);
+var elm$core$Platform$Sub$batch = _Platform_batch;
 var author$project$H_Subscriptions$subscriptions = function (model) {
-	return author$project$Websocket$listen(author$project$B_Message$WsMessage);
+	return elm$core$Platform$Sub$batch(
+		_List_fromArray(
+			[
+				author$project$Websocket$listen(author$project$B_Message$WsMessage)
+			]));
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
@@ -6554,79 +10284,6 @@ var elm$core$Basics$never = function (_n0) {
 		continue never;
 	}
 };
-var elm$core$Task$Perform = function (a) {
-	return {$: 'Perform', a: a};
-};
-var elm$core$Task$succeed = _Scheduler_succeed;
-var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
-var elm$core$Task$andThen = _Scheduler_andThen;
-var elm$core$Task$map = F2(
-	function (func, taskA) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return elm$core$Task$succeed(
-					func(a));
-			},
-			taskA);
-	});
-var elm$core$Task$map2 = F3(
-	function (func, taskA, taskB) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return A2(
-					elm$core$Task$andThen,
-					function (b) {
-						return elm$core$Task$succeed(
-							A2(func, a, b));
-					},
-					taskB);
-			},
-			taskA);
-	});
-var elm$core$Task$sequence = function (tasks) {
-	return A3(
-		elm$core$List$foldr,
-		elm$core$Task$map2(elm$core$List$cons),
-		elm$core$Task$succeed(_List_Nil),
-		tasks);
-};
-var elm$core$Platform$sendToApp = _Platform_sendToApp;
-var elm$core$Task$spawnCmd = F2(
-	function (router, _n0) {
-		var task = _n0.a;
-		return _Scheduler_spawn(
-			A2(
-				elm$core$Task$andThen,
-				elm$core$Platform$sendToApp(router),
-				task));
-	});
-var elm$core$Task$onEffects = F3(
-	function (router, commands, state) {
-		return A2(
-			elm$core$Task$map,
-			function (_n0) {
-				return _Utils_Tuple0;
-			},
-			elm$core$Task$sequence(
-				A2(
-					elm$core$List$map,
-					elm$core$Task$spawnCmd(router),
-					commands)));
-	});
-var elm$core$Task$onSelfMsg = F3(
-	function (_n0, _n1, _n2) {
-		return elm$core$Task$succeed(_Utils_Tuple0);
-	});
-var elm$core$Task$cmdMap = F2(
-	function (tagger, _n0) {
-		var task = _n0.a;
-		return elm$core$Task$Perform(
-			A2(elm$core$Task$map, tagger, task));
-	});
-_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
-var elm$core$Task$command = _Platform_leaf('Task');
 var elm$core$Task$perform = F2(
 	function (toMessage, task) {
 		return elm$core$Task$command(
