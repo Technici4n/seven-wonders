@@ -1,1 +1,0 @@
-elm make src/Main.elm --output=../backend/static/main.js
