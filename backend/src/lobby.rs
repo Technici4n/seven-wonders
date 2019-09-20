@@ -176,8 +176,6 @@ impl Game {
         }
         
         self.state = Some(GameState::new(self.player_count));
-
-        dbg!(&self.player_names, &self.player_ids);
     }
 
     fn get_connected_players(&self) -> Vec<String> {

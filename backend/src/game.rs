@@ -82,13 +82,8 @@ impl Game {
             PlayerAction::GetResource(player, production, resource) => {
                 if player < 3 && production < data.resource_productions[player].len() && resource < 8 {
                     if let Play::ChoosingResources { card_index, resource_allocation, verdict } = play {
-                        println!("Resource productions: {:?}", data.resource_productions);
-                        println!("First RA: {:?}", resource_allocation);
                         resource_allocation[player][production] = resource;
-                        println!("Second RA: {:?}", resource_allocation);
                         *verdict = data.get_card_verdict(*card_index, &resource_allocation);
-                        dbg!(*card_index);
-                        println!("Verdict: {:?}", verdict);
                     }
                 }
             },
@@ -204,8 +199,6 @@ impl PlayerData {
         let mut gold_cost = self.hand_cards[card].gold_cost;
         for player in 0..3 {
             for (production, chosen_resource) in resource_allocation[player].iter().enumerate() {
-                dbg!((player, production, chosen_resource));
-                dbg!(&self.resource_productions);
                 if *chosen_resource > 0 && self.resource_productions[player][production][chosen_resource-1] > 0 {
                     let id = chosen_resource - 1;
                     allocated_resources[id] += 1;
@@ -233,9 +226,6 @@ impl PlayerData {
         } else {
             0
         };
-
-        dbg!(&self.hand_cards);
-        dbg!(card, allocated_resources, card_cost, extra_resources, missing_resources);
 
         ResourceAllocationVerdict {
             extra_resources,
