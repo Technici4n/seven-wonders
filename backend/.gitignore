@@ -1,2 +1,5 @@
 /target
 **/*.rs.bk
+/static/**
+!/static/index.html
+!/static/index.js
