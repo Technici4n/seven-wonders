@@ -1,4 +1,4 @@
-module Render exposing (toEntities, transformPosition, ScenePart)
+module Render exposing (mergeParts, toEntities, transformPosition, ScenePart)
 
 import A_Model exposing (Textures)
 import Math.Matrix4 as Mat4 exposing (Mat4)
@@ -14,6 +14,10 @@ type alias ScenePart =
   { images : VertexList Image.Vertex
   , text : VertexList Text.Vertex
   }
+
+mergeParts : List ScenePart -> ScenePart
+mergeParts =
+  List.foldl (\sp {images, text} -> {images=images++sp.images,text=text++sp.text}) {images=[],text=[]}
 
 transformPosition : Mat4 -> ScenePart -> ScenePart
 transformPosition f sp =

@@ -103,6 +103,7 @@ update msg model =
           , playerCount = activeGameInfo.playerCount
           , connectedPlayers = activeGameInfo.connectedPlayers
           , game = activeGameInfo.game
+          , shownPlayer = activeGameInfo.playerCount - 1
           }
         , cmd
         )

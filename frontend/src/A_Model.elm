@@ -44,6 +44,7 @@ type alias GameModel =
   , playerCount : Int
   , connectedPlayers : List String
   , game : Maybe Game
+  , shownPlayer : Int
   }
 
 type alias RenderParameters =
