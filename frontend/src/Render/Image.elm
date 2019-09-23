@@ -5,6 +5,7 @@ import Dict exposing (Dict)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Rectangle exposing (Rectangle)
 import Render.VertexList as VertexList exposing (VertexList)
 import Task exposing (Task)
 import WebGL exposing (Mesh, Shader)
@@ -16,7 +17,7 @@ loadTexture =
     Texture.loadWith { defaultOptions | magnify = Texture.nearest, minify = Texture.nearest } "/textures.png"
 
 
-render : TextureAtlas -> String -> VertexList Vertex
+render : TextureAtlas -> String -> ( VertexList Vertex, Rectangle )
 render atlas texture =
     let
         renderWithInfo imageInfo =
@@ -72,11 +73,17 @@ render atlas texture =
                 d =
                     v uv_bl xy_bl
             in
-            VertexList.fromFace a b c d
+            ( VertexList.fromFace a b c d
+            , { xpos = 0.0
+              , ypos = 0.0
+              , width = width / height
+              , height = 1.0
+              }
+            )
     in
     Dict.get texture atlas.textures
         |> Maybe.map renderWithInfo
-        |> Maybe.withDefault []
+        |> Maybe.withDefault ( [], Rectangle 0 0 0 0 )
 
 
 type alias Vertex =

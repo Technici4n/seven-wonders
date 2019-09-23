@@ -5,6 +5,7 @@ import Dict as Dict
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Rectangle exposing (Rectangle)
 import Render.VertexList as VertexList exposing (VertexList)
 import Task exposing (Task)
 import WebGL exposing (Mesh, Shader)
@@ -16,7 +17,7 @@ loadTexture =
     Texture.loadWith { defaultOptions | minify = Texture.nearest } "/font.png"
 
 
-render : Font -> Vec3 -> String -> VertexList Vertex
+render : Font -> Vec3 -> String -> ( VertexList Vertex, Rectangle )
 render font color text =
     let
         initialState =
@@ -29,12 +30,21 @@ render font color text =
                 ]
             , totalAdvance + charInfo.xadvance
             )
+
+        finish ( triangles, totalAdvance ) =
+            ( triangles
+            , { width = toFloat totalAdvance / toFloat font.common.lineHeight
+              , height = 1.0
+              , xpos = 0.0
+              , ypos = 0.0
+              }
+            )
     in
     text
         |> String.toList
         |> List.filterMap (\char -> Dict.get (String.fromChar char) font.chars)
         |> List.foldl appendLetter initialState
-        |> Tuple.first
+        |> finish
 
 
 renderLetter : Font -> Vec3 -> CharInfo -> Int -> VertexList Vertex

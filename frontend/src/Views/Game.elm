@@ -23,7 +23,8 @@ import Html.Events exposing (onClick)
 import ListUtil as L
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
-import Render exposing (ScenePart)
+import Rectangle exposing (Rectangle)
+import Render
 import Render.Image as Image
 import Render.Text as Text
 import Render.VertexList as VertexList exposing (VertexList)
@@ -380,10 +381,9 @@ viewScene gameModel ags =
             in
             WebGL.toHtmlWith webglParameters canvasAttributes <|
                 Render.toEntities textures <|
-                    Debug.log "triangles" <|
-                        [ viewHand renderParameters ags.playerHand
-                        , Render.mergeParts <| viewPlayers renderParameters gameModel ags
-                        ]
+                    [ Render.toPart <| viewPlayers renderParameters gameModel ags
+                    , Render.toPart <| viewHand renderParameters ags.playerHand
+                    ]
 
         Nothing ->
             text "No render :("
@@ -398,9 +398,9 @@ type CardColumn
     | Guilds
 
 
-colorToColumn : CardColor -> CardColumn
-colorToColumn color =
-    case color of
+cardColumn : Card -> CardColumn
+cardColumn card =
+    case card.color of
         Blue ->
             Points
 
@@ -433,21 +433,9 @@ columnWidth column =
             2.4
 
 
-type alias ColumnData =
-    { width : Float
-    , cards : List Card
-    }
-
-
-viewPlayerData : RenderParameters -> PlayerData -> ScenePart
-viewPlayerData renderParameters playerData =
+showBoard : RenderParameters -> Rectangle -> PlayerData -> List Render.Element
+showBoard renderParameters target playerData =
     let
-        boardWidth =
-            4.0
-
-        boardHeight =
-            1.0
-
         columnInterspace =
             0.1
 
@@ -455,7 +443,7 @@ viewPlayerData renderParameters playerData =
             { width = columnWidth column
             , cards =
                 playerData.boardCards
-                    |> List.filter (\c -> colorToColumn c.color == column)
+                    |> List.filter (\c -> cardColumn c == column)
             }
 
         columns =
@@ -463,117 +451,40 @@ viewPlayerData renderParameters playerData =
                 |> List.map getColumn
                 |> List.filter (\c -> List.length c.cards > 0)
 
-        totalWidth =
-            (List.map .width >> List.sum) columns + columnInterspace * (toFloat (List.length columns) - 1) + 0.0000001
-
-        cardHeight columnData =
-            boardHeight * boardWidth / totalWidth
-
-        columnHeight columnData =
-            cardHeight columnData * toFloat (List.length columnData.cards)
-
-        totalHeight =
-            columns
-                |> List.map columnHeight
-                |> List.maximum
-                |> Maybe.withDefault 1.0
-
-        heightRatio =
-            boardHeight / totalHeight
-
-        newWidth =
-            heightRatio * boardWidth
-
         drawColumn columnData xoffset =
-            let
-                height =
-                    cardHeight columnData
-
-                drawCard position name =
-                    let
-                        scale =
-                            Mat4.makeScale3 height height height
-
-                        translate =
-                            Mat4.makeTranslate3 (xoffset / totalWidth * boardWidth) (toFloat position * height) 0.0
-
-                        transform =
-                            Mat4.mul translate scale
-                    in
-                    { images =
-                        Image.render renderParameters.atlas name
-                            |> VertexList.transformPosition transform
-                    , text = []
-                    }
-            in
             columnData.cards
-                |> List.map .name
-                |> List.indexedMap drawCard
+                |> List.indexedMap
+                    (\i card ->
+                        Image.render renderParameters.atlas card.name
+                            |> Render.imageToElement
+                            |> Render.mapRectangle (Rectangle.translate ( xoffset, toFloat i ))
+                    )
 
-        accumulateColumns column { xoffset, sceneParts } =
-            { xoffset = xoffset + column.width + columnInterspace
-            , sceneParts = sceneParts ++ drawColumn column xoffset
-            }
+        accumulateColumns column ( xoffset, images ) =
+            ( xoffset + column.width + columnInterspace
+            , images ++ drawColumn column xoffset
+            )
 
-        renderedBoard =
-            List.foldl accumulateColumns { xoffset = 0.0, sceneParts = [] } columns
-                |> .sceneParts
-                |> Render.mergeParts
+        columnImages =
+            columns
+                |> List.foldl accumulateColumns ( 0.0, [] )
+                |> Tuple.second
+                |> Render.mapRectangles (Rectangle.center target)
     in
-    if totalHeight > boardHeight then
-        renderedBoard
-            |> Render.transformPosition (Mat4.mul (Mat4.makeTranslate3 ((boardWidth - newWidth) / 2) 0.0 0.0) (Mat4.makeScale3 heightRatio heightRatio heightRatio))
-
-    else
-        renderedBoard
+    columnImages
 
 
-viewPlayers : RenderParameters -> GameModel -> ActiveGameState -> List ScenePart
+viewPlayers : RenderParameters -> GameModel -> ActiveGameState -> List Render.Element
 viewPlayers renderParameters gameModel ags =
     let
-        screenHeight =
-            1.0
-
         screenWidth =
             16 / 9
 
-        currentPlayerBoardWidth =
-            12 / 9
+        currentBoard =
+            Rectangle (12 / 9) (3 / 9) (2 / 9) (2 / 9)
 
-        currentPlayerBoardHeight =
-            3 / 9
-
-        currentPlayerHeight =
-            5 / 9
-
-        translateCurrentPlayerBoard =
-            Mat4.makeTranslate3 ((screenWidth - currentPlayerBoardWidth) / 2) (2 / 9) 0.0
-
-        scaleCurrentPlayerBoard =
-            Mat4.makeScale3 currentPlayerBoardHeight currentPlayerBoardHeight currentPlayerBoardHeight
-
-        drawCurrentPlayer playerData =
-            viewPlayerData renderParameters playerData
-                |> Render.transformPosition (Mat4.mul translateCurrentPlayerBoard scaleCurrentPlayerBoard)
-
-        shownPlayerBoardWidth =
-            12 / 9
-
-        shownPlayerBoardHeight =
-            3 / 9
-
-        shownPlayerPosition =
-            5.5 / 9
-
-        translateShownPlayer =
-            Mat4.makeTranslate3 ((screenWidth - shownPlayerBoardWidth) / 2) shownPlayerPosition 0.0
-
-        scaleShownPlayer =
-            Mat4.makeScale3 shownPlayerBoardHeight shownPlayerBoardHeight shownPlayerBoardHeight
-
-        drawShownPlayer playerData =
-            viewPlayerData renderParameters playerData
-                |> Render.transformPosition (Mat4.mul translateShownPlayer scaleShownPlayer)
+        shownBoard =
+            Rectangle (12 / 9) (3 / 9) (2 / 9) (5.5 / 9)
 
         drawPlayer position =
             let
@@ -582,10 +493,10 @@ viewPlayers renderParameters gameModel ags =
 
                 drawFunction =
                     if relativePosition == 0 then
-                        drawCurrentPlayer >> Just
+                        showBoard renderParameters currentBoard >> Just
 
                     else if relativePosition == gameModel.shownPlayer then
-                        drawShownPlayer >> Just
+                        showBoard renderParameters shownBoard >> Just
 
                     else
                         always Nothing
@@ -595,61 +506,42 @@ viewPlayers renderParameters gameModel ags =
     ags.game.players
         |> List.indexedMap drawPlayer
         |> List.filterMap identity
+        |> List.concat
 
 
-viewHand : RenderParameters -> List Card -> ScenePart
+viewHand : RenderParameters -> List Card -> List Render.Element
 viewHand renderParameters cards =
     let
         cardInterspace =
             0.1
 
-        cardWidth =
-            .color >> colorToColumn >> columnWidth
+        handRectangle =
+            Rectangle (16 / 9) (1 / 9) 0.0 0.0
 
-        handWidth =
-            cardInterspace
-                * toFloat (List.length cards - 1)
-                + (cards
-                    |> List.map cardWidth
-                    |> List.sum
-                  )
-
-        handHeight =
-            0.1
-
-        handSpace =
-            16 / 9
-
-        actualHandWidth =
-            handWidth * handHeight
+        textRectangle =
+            Rectangle (16 / 9) 0.05 0.0 (1.1 / 9)
 
         drawCard xoffset name =
             Image.render renderParameters.atlas name
-                |> VertexList.transformPosition (Mat4.makeTranslate3 xoffset 0.0 0.0)
+                |> Render.imageToElement
+                |> Render.mapRectangle (Rectangle.translate ( xoffset, 0.0 ))
 
-        accumulateCards card ( xoffset, images ) =
-            ( xoffset + cardInterspace + cardWidth card
-            , images ++ drawCard xoffset card.name
+        accumulateCards card ( xoffset, triangles ) =
+            ( xoffset + columnWidth (cardColumn card) + cardInterspace
+            , triangles ++ [ drawCard xoffset card.name ]
             )
 
-        translate =
-            Mat4.makeTranslate3 ((handSpace - actualHandWidth) / 2) 0.0 0.0
-
-        scale =
-            Mat4.makeScale3 handHeight handHeight handHeight
-
-        transform =
-            Mat4.mul translate scale
+        cardElements =
+            List.foldl accumulateCards ( 0, [] ) cards
+                |> Tuple.second
+                |> Render.mapRectangles (Rectangle.center handRectangle)
 
         handText =
             Text.render renderParameters.font (vec3 0.0 0.0 0.0) "VOTRE MAIN"
-                |> Debug.log "handText"
-                |> VertexList.transformPosition (Mat4.mul (Mat4.makeTranslate3 (6.5 / 9) (1.1 / 9) 0.01) (Mat4.makeScale3 0.05 0.05 0.05))
+                |> Render.textToElement
+                |> (\x ->
+                        [ x ]
+                            |> Render.mapRectangles (Rectangle.center textRectangle)
+                   )
     in
-    { images =
-        cards
-            |> List.foldl accumulateCards ( 0.0, [] )
-            |> Tuple.second
-            |> VertexList.transformPosition transform
-    , text = handText
-    }
+    handText ++ cardElements
