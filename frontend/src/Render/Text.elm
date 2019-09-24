@@ -84,21 +84,21 @@ renderLetter font color charInfo totalAdvance =
             toFloat font.common.lineHeight
 
         xy_tl =
-            vec2 0.0 (height / lineHeight)
+            vec2 0.0 1.0
 
         xy_tr =
-            vec2 (width / lineHeight) (height / lineHeight)
+            vec2 (width / lineHeight) 1.0
 
         xy_br =
-            vec2 (width / lineHeight) 0.0
+            vec2 (width / lineHeight) (1.0 - height / lineHeight)
 
         xy_bl =
-            vec2 0.0 0.0
+            vec2 0.0 (1.0 - height / lineHeight)
 
         offset =
             vec3
                 ((toFloat <| totalAdvance + charInfo.xoffset) / lineHeight)
-                ((toFloat <| charInfo.yoffset) / lineHeight)
+                ((toFloat <| -charInfo.yoffset) / lineHeight)
                 0.0
 
         toVec3 v2 =
