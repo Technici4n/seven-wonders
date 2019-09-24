@@ -1,8 +1,24 @@
-module Render exposing (Element, Part, Primitive, imageToElement, mapRectangle, mapRectangles, textToElement, toEntities, toPart)
+module Render exposing
+    ( Element
+    , Part
+    , Primitive
+    , imageToElement
+    , mapRectangle
+    , mapRectangles
+    , onClick
+    , textToElement
+    , toEntities
+    , toHtml
+    , toPart
+    , withHtml
+    , withZindex
+    )
 
 import A_Model exposing (Textures)
 import B_Message exposing (Msg)
-import Html exposing (Html)
+import Html exposing (Html, div)
+import Html.Attributes exposing (class, style)
+import Html.Events
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Rectangle exposing (Rectangle)
 import Render.Image as Image
@@ -17,7 +33,6 @@ import WebGL.Settings.DepthTest as DepthTest
 type alias Part =
     { images : VertexList Image.Vertex
     , text : VertexList Text.Vertex
-    , html : Html Msg
     }
 
 
@@ -30,6 +45,8 @@ type alias Element =
     { primitive : Primitive
     , sourceRect : Rectangle
     , targetRect : Rectangle
+    , html : List (Html Msg)
+    , zindex : Float
     }
 
 
@@ -38,6 +55,8 @@ imageToElement ( vertices, rect ) =
     { primitive = Images vertices
     , sourceRect = rect
     , targetRect = rect
+    , html = []
+    , zindex = 0
     }
 
 
@@ -46,7 +65,24 @@ textToElement ( vertices, rect ) =
     { primitive = Text vertices
     , sourceRect = rect
     , targetRect = rect
+    , html = []
+    , zindex = 0
     }
+
+
+withHtml : List (Html Msg) -> Element -> Element
+withHtml html element =
+    { element | html = html }
+
+
+withZindex : Float -> Element -> Element
+withZindex z element =
+    { element | zindex = z }
+
+
+onClick : Msg -> Element -> Element
+onClick message =
+    withHtml [ Html.button [ Html.Events.onClick message, class "fill-parent" ] [ Html.text "button" ] ]
 
 
 mapRectangle : (Rectangle -> Rectangle) -> Element -> Element
@@ -85,13 +121,36 @@ transformElements elements =
                         Mat4.makeScale3 (e.targetRect.width / e.sourceRect.width) (e.targetRect.height / e.sourceRect.height) 1.0
 
                     toTarget =
-                        Mat4.makeTranslate3 e.targetRect.xpos e.targetRect.ypos 0.0
+                        Mat4.makeTranslate3 e.targetRect.xpos e.targetRect.ypos e.zindex
 
                     transform =
                         Mat4.mul (Mat4.mul toTarget scale) toOrigin
                 in
                 { e | primitive = e.primitive |> transformPrimitive transform }
             )
+
+
+toHtml : List Element -> List (Html Msg)
+toHtml elements =
+    let
+        screenWidth =
+            1600
+
+        screenHeight =
+            900
+
+        buildElementHtml element =
+            div
+                [ style "position" "absolute"
+                , style "width" (String.fromFloat (screenHeight * element.targetRect.width) ++ "px")
+                , style "height" (String.fromFloat (screenHeight * element.targetRect.height) ++ "px")
+                , style "left" (String.fromFloat (screenHeight * element.targetRect.xpos) ++ "px")
+                , style "bottom" (String.fromFloat (screenHeight * element.targetRect.ypos) ++ "px")
+                ]
+                element.html
+    in
+    elements
+        |> List.map buildElementHtml
 
 
 toPart : List Element -> Part
@@ -113,7 +172,6 @@ toPart elements =
     in
     { images = Tuple.first accumulated
     , text = Tuple.second accumulated
-    , html = Html.div [] []
     }
 
 

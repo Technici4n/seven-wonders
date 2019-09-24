@@ -84,39 +84,38 @@ scaleTo target elements =
 -}
 center : Rectangle -> List Rectangle -> List Rectangle
 center target elements =
-    Debug.log "center" <|
-        case elementsBounds (Tuple.first <| Debug.log "(elements, target)" ( elements, target )) of
-            Just bounds ->
-                if isEmpty bounds then
-                    []
-
-                else if bounds.width / bounds.height < target.width / target.height then
-                    let
-                        ratio =
-                            target.height / bounds.height
-
-                        transformRectangle element =
-                            { width = element.width * ratio
-                            , height = element.height * ratio
-                            , xpos = (element.xpos - bounds.xpos) * ratio + target.xpos + (target.width - bounds.width * ratio) / 2
-                            , ypos = (element.ypos - bounds.ypos) * ratio + target.ypos
-                            }
-                    in
-                    List.map transformRectangle elements
-
-                else
-                    let
-                        ratio =
-                            target.width / bounds.width
-
-                        transformRectangle element =
-                            { width = element.width * ratio
-                            , height = element.height * ratio
-                            , xpos = (element.xpos - bounds.xpos) * ratio + target.xpos
-                            , ypos = (element.ypos - bounds.ypos) * ratio + target.ypos + (target.height - bounds.height * ratio) / 2
-                            }
-                    in
-                    List.map transformRectangle elements
-
-            Nothing ->
+    case elementsBounds elements of
+        Just bounds ->
+            if isEmpty bounds then
                 []
+
+            else if bounds.width / bounds.height < target.width / target.height then
+                let
+                    ratio =
+                        target.height / bounds.height
+
+                    transformRectangle element =
+                        { width = element.width * ratio
+                        , height = element.height * ratio
+                        , xpos = (element.xpos - bounds.xpos) * ratio + target.xpos + (target.width - bounds.width * ratio) / 2
+                        , ypos = (element.ypos - bounds.ypos) * ratio + target.ypos
+                        }
+                in
+                List.map transformRectangle elements
+
+            else
+                let
+                    ratio =
+                        target.width / bounds.width
+
+                    transformRectangle element =
+                        { width = element.width * ratio
+                        , height = element.height * ratio
+                        , xpos = (element.xpos - bounds.xpos) * ratio + target.xpos
+                        , ypos = (element.ypos - bounds.ypos) * ratio + target.ypos + (target.height - bounds.height * ratio) / 2
+                        }
+                in
+                List.map transformRectangle elements
+
+        Nothing ->
+            []

@@ -18,7 +18,7 @@ import A_Model
         )
 import B_Message exposing (Msg(..))
 import Html exposing (..)
-import Html.Attributes exposing (disabled, height, style, width)
+import Html.Attributes exposing (class, disabled, height, id, style, width)
 import Html.Events exposing (onClick)
 import ListUtil as L
 import Math.Matrix4 as Mat4 exposing (Mat4)
@@ -326,37 +326,6 @@ viewTurnStatus gameModel state data =
         ]
 
 
-type CardGroup
-    = BrownGray -- Brown or gray
-    | BlueRedYellow
-    | GreenPurple
-
-
-groupFromColor : CardColor -> CardGroup
-groupFromColor color =
-    case color of
-        Blue ->
-            BlueRedYellow
-
-        Brown ->
-            BrownGray
-
-        Gray ->
-            BrownGray
-
-        Green ->
-            GreenPurple
-
-        Purple ->
-            GreenPurple
-
-        Red ->
-            BlueRedYellow
-
-        Yellow ->
-            BlueRedYellow
-
-
 
 -- WebGL drawings
 
@@ -376,14 +345,21 @@ viewScene gameModel ags =
                 canvasAttributes =
                     [ width 1600
                     , height 900
-                    , style "display" "block"
+                    , id "sceneCanvas"
+                    ]
+
+                entities =
+                    [ viewPlayers renderParameters gameModel ags
+                    , viewHand renderParameters ags.playerHand
                     ]
             in
-            WebGL.toHtmlWith webglParameters canvasAttributes <|
-                Render.toEntities textures <|
-                    [ Render.toPart <| viewPlayers renderParameters gameModel ags
-                    , Render.toPart <| viewHand renderParameters ags.playerHand
-                    ]
+            div [ id "renderContainer", width 1600, height 900 ] <|
+                [ WebGL.toHtmlWith webglParameters canvasAttributes <|
+                    Render.toEntities textures <|
+                        List.map Render.toPart <|
+                            entities
+                ]
+                    ++ Render.toHtml (List.concat entities)
 
         Nothing ->
             text "No render :("
@@ -483,30 +459,76 @@ viewPlayers renderParameters gameModel ags =
         currentBoard =
             Rectangle (12 / 9) (3 / 9) (2 / 9) (2 / 9)
 
+        checkoutLeft =
+            Rectangle (1 / 9) (1 / 9) (0.5 / 9) (6.5 / 9)
+
+        checkoutRight =
+            Rectangle (1 / 9) (1 / 9) (14.5 / 9) (6.5 / 9)
+
         shownBoard =
             Rectangle (12 / 9) (3 / 9) (2 / 9) (5.5 / 9)
 
-        drawPlayer position =
+        shownPlayerRectangle =
+            Rectangle (12 / 9) (0.3 / 9) (2 / 9) (8.5 / 9)
+
+        drawCheckout str target msg =
+            Text.render renderParameters.font (vec3 0.0 0.0 0.0) str
+                |> Render.textToElement
+                |> Render.onClick msg
+                |> (\x -> Render.mapRectangles (Rectangle.center target) [ x ])
+
+        relativePosition pos =
+            modBy gameModel.playerCount (pos - gameModel.playerId)
+
+        shownPlayer rpos name =
+            (if rpos == 0 then
+                "VOUS"
+
+             else if rpos == 1 then
+                "JOUEUR DE DROITE"
+
+             else if rpos == gameModel.playerCount - 1 then
+                "JOUEUR DE GAUCHE"
+
+             else
+                "AUTRE JOUEUR"
+            )
+                ++ " ("
+                ++ name
+                ++ ")"
+
+        drawShownPlayerName rpos name =
+            Text.render renderParameters.font (vec3 0.0 0.0 0.0) (shownPlayer rpos name)
+                |> Render.textToElement
+                |> (\x -> Render.mapRectangles (Rectangle.center shownPlayerRectangle) [ x ])
+
+        drawPlayer position ( name, playerData ) =
             let
-                relativePosition =
-                    modBy gameModel.playerCount (position - gameModel.playerId)
-
-                drawFunction =
-                    if relativePosition == 0 then
-                        showBoard renderParameters currentBoard >> Just
-
-                    else if relativePosition == gameModel.shownPlayer then
-                        showBoard renderParameters shownBoard >> Just
+                drawCurrentBoard =
+                    if position == gameModel.playerId then
+                        showBoard renderParameters currentBoard playerData
 
                     else
-                        always Nothing
+                        []
+
+                drawShownBoard =
+                    if position == gameModel.shownPlayer then
+                        showBoard renderParameters shownBoard playerData
+                            ++ drawShownPlayerName (relativePosition position) name
+
+                    else
+                        []
             in
-            drawFunction
+            drawShownBoard ++ drawCurrentBoard
     in
-    ags.game.players
-        |> List.indexedMap drawPlayer
-        |> List.filterMap identity
-        |> List.concat
+    List.concat
+        [ ags.game.players
+            |> List.map2 Tuple.pair gameModel.connectedPlayers
+            |> List.indexedMap drawPlayer
+            |> List.concat
+        , drawCheckout "GAUCHE" checkoutLeft (ChangeShownPlayer -1)
+        , drawCheckout "DROITE" checkoutRight (ChangeShownPlayer 1)
+        ]
 
 
 viewHand : RenderParameters -> List Card -> List Render.Element
@@ -525,6 +547,7 @@ viewHand renderParameters cards =
             Image.render renderParameters.atlas name
                 |> Render.imageToElement
                 |> Render.mapRectangle (Rectangle.translate ( xoffset, 0.0 ))
+                |> Render.withHtml [ button [ class "fill-parent" ] [ text "hello" ] ]
 
         accumulateCards card ( xoffset, triangles ) =
             ( xoffset + columnWidth (cardColumn card) + cardInterspace

@@ -16,6 +16,7 @@ type
     | JoinGame String
       -- Game messages
     | PerformAction PlayerAction
+    | ChangeShownPlayer Int
 
 
 type NewGameMessage

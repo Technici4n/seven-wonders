@@ -68,6 +68,9 @@ update msg model =
                 TexturesLoaded t ->
                     noUpdate
 
+                ChangeShownPlayer _ ->
+                    noUpdate
+
         updateGame gameMsg gameModel =
             case gameMsg of
                 WsMessage m ->
@@ -112,6 +115,9 @@ update msg model =
                         Nothing ->
                             noUpdate
 
+                ChangeShownPlayer diff ->
+                    ( InGame { gameModel | shownPlayer = modBy gameModel.playerCount (gameModel.shownPlayer + diff) }, Cmd.none )
+
         updateActiveGame renderParameters textures playerInfo activeGameInfo cmd =
             let
                 playerId =
@@ -130,7 +136,7 @@ update msg model =
                 , playerCount = activeGameInfo.playerCount
                 , connectedPlayers = activeGameInfo.connectedPlayers
                 , game = activeGameInfo.game
-                , shownPlayer = activeGameInfo.playerCount - 1
+                , shownPlayer = playerId
                 }
             , cmd
             )
