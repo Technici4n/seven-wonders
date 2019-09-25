@@ -106,12 +106,12 @@ viewActiveGame gameModel state =
     div [] <|
         List.filterMap identity
             [ Maybe.map viewBoard <| L.get gameModel.playerId state.game.players
-            , Just <| viewPlay gameModel state
+            , Just <| viewPlay_legacy gameModel state
             ]
 
 
-viewPlay : GameModel -> ActiveGameState -> Html Msg
-viewPlay gameModel state =
+viewPlay_legacy : GameModel -> ActiveGameState -> Html Msg
+viewPlay_legacy gameModel state =
     case gameModel.play of
         NoAction ->
             viewCards state.playerHand
@@ -350,7 +350,8 @@ viewScene gameModel ags =
 
                 entities =
                     [ viewPlayers renderParameters gameModel ags
-                    , viewHand renderParameters ags.playerHand
+                    , viewPlay renderParameters gameModel ags
+                    --, viewHand renderParameters ags.playerHand
                     ]
             in
             div [ id "renderContainer", width 1600, height 900 ] <|
@@ -542,6 +543,15 @@ viewPlayers renderParameters gameModel ags =
         , drawCheckout "DROITE" checkoutRight (ChangeShownPlayer 1)
         ]
 
+viewPlay : RenderParameters -> GameModel -> ActiveGameState -> List Render.Element
+viewPlay renderParameters gameModel ags =
+    case gameModel.play of
+        NoAction ->
+            viewHand renderParameters ags.playerHand
+        ChoosingResources data ->
+            viewPlayCard renderParameters gameModel ags data
+        ChoseResources { cardIndex, resourceAllocation } ->
+            []
 
 viewHand : RenderParameters -> List Card -> List Render.Element
 viewHand renderParameters cards =
@@ -555,20 +565,21 @@ viewHand renderParameters cards =
         textRectangle =
             Rectangle (16 / 9) 0.05 0.0 (1.1 / 9)
 
-        drawCard xoffset name =
+        drawCard xoffset name i =
             Image.render renderParameters.atlas name
                 |> Render.imageToElement
+                |> Render.onClick (PerformAction (PickCard i))
                 |> Render.mapRectangle (Rectangle.translate ( xoffset, 0.0 ))
-                |> Render.withHtml [ button [ class "fill-parent" ] [ text "hello" ] ]
 
-        accumulateCards card ( xoffset, triangles ) =
+        accumulateCards card ( xoffset, triangles, i ) =
             ( xoffset + columnWidth (cardColumn card) + cardInterspace
-            , triangles ++ [ drawCard xoffset card.name ]
+            , triangles ++ [ drawCard xoffset card.name i ]
+            , i + 1
             )
 
         cardElements =
-            List.foldl accumulateCards ( 0, [] ) cards
-                |> Tuple.second
+            List.foldl accumulateCards ( 0, [], 0 ) cards
+                |> \(a, b, c) -> b
                 |> Render.mapRectangles (Rectangle.center handRectangle)
 
         handText =
@@ -580,3 +591,35 @@ viewHand renderParameters cards =
                    )
     in
     handText ++ cardElements
+
+viewPlayCard : RenderParameters -> GameModel -> ActiveGameState -> ChoosingResourcesData -> List Render.Element
+viewPlayCard renderParameters gameModel ags data =
+    let
+        textRect =
+            Rectangle (2 / 9) (1 / 9) (7 / 9) (1 / 9)
+
+        cardRect =
+            Rectangle (2 / 9) (1 / 9) (9 / 9) (1 / 9)
+
+        questionRect =
+            Rectangle (0.25 / 9) (0.3 / 9) (11.05 / 9) (1.35 / 9)
+
+        cancelRect =
+            Rectangle (1 / 9) (1 / 9) (11.5 / 9) (1 / 9)
+
+        cardAndTextRect =
+            Rectangle (5 / 9) (1 / 9) (5.5 / 9) (1 / 9)
+
+        viewCardAndText selectedCard =
+            [ Render.text renderParameters.font (vec3 0.0 0.0 0.0) "Jouer la carte " textRect
+            , Render.image renderParameters.atlas selectedCard.name cardRect
+            , Render.text renderParameters.font (vec3 0.0 0.0 0.0) "?" questionRect
+            , Render.text renderParameters.font (vec3 0.0 0.0 0.0) "Annuler!" cancelRect
+                |> List.map (Render.onClick (PerformAction (CancelCard)))
+            ]
+            |> List.concat
+            |> Render.mapRectangles (Rectangle.center cardAndTextRect)
+    in
+    L.get data.cardIndex ags.playerHand
+        |> Maybe.map viewCardAndText
+        |> Maybe.withDefault []

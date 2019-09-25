@@ -2,10 +2,12 @@ module Render exposing
     ( Element
     , Part
     , Primitive
+    , image
     , imageToElement
     , mapRectangle
     , mapRectangles
     , onClick
+    , text
     , textToElement
     , toEntities
     , toHtml
@@ -16,10 +18,13 @@ module Render exposing
 
 import A_Model exposing (Textures)
 import B_Message exposing (Msg)
+import Data.Font exposing (Font)
+import Data.TextureAtlas exposing (TextureAtlas)
 import Html exposing (Html, div)
 import Html.Attributes exposing (class, style)
 import Html.Events
 import Math.Matrix4 as Mat4 exposing (Mat4)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Rectangle exposing (Rectangle)
 import Render.Image as Image
 import Render.Text as Text
@@ -69,6 +74,17 @@ textToElement ( vertices, rect ) =
     , zindex = 0
     }
 
+image : TextureAtlas -> String -> Rectangle -> List Element
+image textureAtlas imageName target =
+    Image.render textureAtlas imageName
+    |> imageToElement
+    |> \x -> mapRectangles (Rectangle.center target) [x]
+
+text : Font -> Vec3 -> String -> Rectangle -> List Element
+text font color textToDraw target =
+    Text.render font color textToDraw
+    |> textToElement
+    |> \x -> mapRectangles (Rectangle.center target) [x]
 
 withHtml : List (Html Msg) -> Element -> Element
 withHtml html element =
@@ -82,7 +98,7 @@ withZindex z element =
 
 onClick : Msg -> Element -> Element
 onClick message =
-    withHtml [ Html.button [ Html.Events.onClick message, class "fill-parent" ] [ Html.text "button" ] ]
+    withHtml [ Html.button [ Html.Events.onClick message, class "fill-parent" ] [ Html.text "Render.onClick" ] ]
 
 
 mapRectangle : (Rectangle -> Rectangle) -> Element -> Element
@@ -159,13 +175,13 @@ toPart elements =
         transformedElements =
             transformElements elements
 
-        accumulateVertices element ( images, text ) =
+        accumulateVertices element ( images, textPart ) =
             case element.primitive of
                 Images img ->
-                    ( images ++ img, text )
+                    ( images ++ img, textPart )
 
                 Text txt ->
-                    ( images, text ++ txt )
+                    ( images, textPart ++ txt )
 
         accumulated =
             List.foldl accumulateVertices ( [], [] ) transformedElements
