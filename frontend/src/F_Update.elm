@@ -70,6 +70,9 @@ update msg model =
 
                 ChangeShownPlayer _ ->
                     noUpdate
+                
+                CenterShownPlayer ->
+                    noUpdate
 
         updateGame gameMsg gameModel =
             case gameMsg of
@@ -117,6 +120,9 @@ update msg model =
 
                 ChangeShownPlayer diff ->
                     ( InGame { gameModel | shownPlayer = modBy gameModel.playerCount (gameModel.shownPlayer + diff) }, Cmd.none )
+                
+                CenterShownPlayer ->
+                    ( InGame { gameModel | shownPlayer = gameModel.playerId }, Cmd.none )
 
         updateActiveGame renderParameters textures playerInfo activeGameInfo cmd =
             let

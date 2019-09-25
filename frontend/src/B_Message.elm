@@ -17,6 +17,7 @@ type
       -- Game messages
     | PerformAction PlayerAction
     | ChangeShownPlayer Int
+    | CenterShownPlayer
 
 
 type NewGameMessage

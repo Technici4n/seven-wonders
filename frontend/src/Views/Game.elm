@@ -453,20 +453,32 @@ showBoard renderParameters target playerData =
 viewPlayers : RenderParameters -> GameModel -> ActiveGameState -> List Render.Element
 viewPlayers renderParameters gameModel ags =
     let
-        screenWidth =
-            16 / 9
+        mainBoard =
+            Rectangle (8 / 9) (3 / 9) (4 / 9) (2 / 9)
 
-        currentBoard =
-            Rectangle (12 / 9) (3 / 9) (2 / 9) (2 / 9)
+        leftBoard =
+            Rectangle (4 / 9) (2 / 9) (1 / 9) (6 / 9)
+
+        rightBoard =
+            Rectangle (4 / 9) (2 / 9) (11 / 9) (6 / 9)
+
+        mainText =
+            Rectangle (4 / 9) (0.3 / 9) (6 / 9) (5.2 / 9)
+
+        centerText =
+            Rectangle (4 / 9) (0.3 / 9) (6 / 9) (5.6 / 9)
+
+        leftText =
+            Rectangle (4 / 9) (0.3 / 9) (1 / 9) (5.6 / 9)
+
+        rightText =
+            Rectangle (4 / 9) (0.3 / 9) (11 / 9) (5.6 / 9)
 
         checkoutLeft =
             Rectangle (1 / 9) (1 / 9) (0.5 / 9) (6.5 / 9)
 
         checkoutRight =
             Rectangle (1 / 9) (1 / 9) (14.5 / 9) (6.5 / 9)
-
-        shownBoard =
-            Rectangle (12 / 9) (3 / 9) (2 / 9) (5.5 / 9)
 
         shownPlayerRectangle =
             Rectangle (12 / 9) (0.3 / 9) (2 / 9) (8.5 / 9)
@@ -477,49 +489,49 @@ viewPlayers renderParameters gameModel ags =
                 |> Render.onClick msg
                 |> (\x -> Render.mapRectangles (Rectangle.center target) [ x ])
 
-        relativePosition pos =
-            modBy gameModel.playerCount (pos - gameModel.playerId)
+        playerExtraText position =
+            let
+                rpos =
+                    modBy gameModel.playerCount (position - gameModel.playerId)
+            in
+            if rpos == 0 then
+                " (vous)"
+            else if rpos == 1 then
+                " (votre voisin de droite)"
+            else if rpos == gameModel.playerCount - 1 then
+                " (votre voisin de gauche)"
+            else
+                " (vous ne pouvez pas interagir)"
 
-        shownPlayer rpos name =
-            (if rpos == 0 then
-                "VOUS"
-
-             else if rpos == 1 then
-                "JOUEUR DE DROITE"
-
-             else if rpos == gameModel.playerCount - 1 then
-                "JOUEUR DE GAUCHE"
-
-             else
-                "AUTRE JOUEUR"
-            )
-                ++ " ("
-                ++ name
-                ++ ")"
-
-        drawShownPlayerName rpos name =
-            Text.render renderParameters.font (vec3 0.0 0.0 0.0) (shownPlayer rpos name)
-                |> Render.textToElement
-                |> (\x -> Render.mapRectangles (Rectangle.center shownPlayerRectangle) [ x ])
+        showText target name =
+            Text.render renderParameters.font (vec3 0.0 0.0 0.0) name
+            |> Render.textToElement
+            |> (\x -> Render.mapRectangles (Rectangle.center target) [ x ])
+        
+        showCenterText =
+            showText centerText ">> Recentrer sur moi <<"
+            |> List.map (Render.onClick CenterShownPlayer)
 
         drawPlayer position ( name, playerData ) =
             let
-                drawCurrentBoard =
-                    if position == gameModel.playerId then
-                        showBoard renderParameters currentBoard playerData
-
-                    else
-                        []
-
-                drawShownBoard =
-                    if position == gameModel.shownPlayer then
-                        showBoard renderParameters shownBoard playerData
-                            ++ drawShownPlayerName (relativePosition position) name
-
-                    else
-                        []
+                mod = modBy gameModel.playerCount
             in
-            drawShownBoard ++ drawCurrentBoard
+            if position == gameModel.shownPlayer then
+                showBoard renderParameters mainBoard playerData
+                ++ showText mainText (name ++ playerExtraText position)
+                ++
+                    if position == gameModel.playerId then
+                        []
+                    else
+                        showCenterText
+            else if position == mod (gameModel.shownPlayer+1) then
+                showBoard renderParameters rightBoard playerData
+                ++ showText rightText (name ++ playerExtraText position)
+            else if mod (position+1) == gameModel.shownPlayer then
+                showBoard renderParameters leftBoard playerData
+                ++ showText leftText (name ++ playerExtraText position)
+            else
+                []
     in
     List.concat
         [ ags.game.players
